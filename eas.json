@@ -5,13 +5,14 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "channel": "development"
     },
     "preview": {
       "releaseChannel": "staging",
       "yarn": "1.22.18",
-      "android" : {
-        "buildType" : "apk"
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {

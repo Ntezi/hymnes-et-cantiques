@@ -13,7 +13,7 @@ const SongListScreen = ({navigation}) => {
 		navigation.setOptions({
 			headerTitle: 'Hymnes et Cantiques',
 			headerTitleStyle: {
-				fontSize: 28,
+				fontSize: 24,
 				fontWeight: 'bold',
 				textAlign: 'center',
 			},
@@ -57,8 +57,8 @@ const SongListScreen = ({navigation}) => {
 				placeholder="Andika numero cg title..."
 				onChangeText={updateSearch}
 				value={search}
-				inputContainerStyle={{backgroundColor: '#ccc'}}
-				containerStyle={{backgroundColor: 'white', borderBottomColor: 'transparent', borderTopColor: 'transparent', elevation: 0, shadowOpacity: 0}}
+				inputContainerStyle={{backgroundColor: 'white'}}
+				containerStyle={{backgroundColor: 'white', borderBottomColor: 'transparent', borderTopColor: 'transparent', elevation: 5, shadowOpacity: 0}}
 			/>
 
 			<View style={styles.container}>
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 	},
 	itemContainer: {
-		backgroundColor: '#ccc',
+		backgroundColor: 'white',
 		width: 50,
 		height: 50,
 		margin: 10,
@@ -100,6 +100,7 @@ const styles = StyleSheet.create({
 		fontSize: 18,
 		fontWeight: 'bold',
 		textAlign: 'center',
+		color: '#733752'
 	},
 	row: {
 		flexDirection: 'row',

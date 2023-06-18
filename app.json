@@ -19,6 +19,12 @@
         "projectId": "fe0b84b8-5082-4321-80e0-8c24f6461e0d"
       }
     },
-    "owner": "ntezi"
+    "owner": "ntezi",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/fe0b84b8-5082-4321-80e0-8c24f6461e0d"
+    }
   }
 }

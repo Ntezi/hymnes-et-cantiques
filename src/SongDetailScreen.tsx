@@ -6,11 +6,15 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const SongDetailScreen = ({route, navigation}) => {
 	const {song_number, verses, title, songs} = route.params;
-	const [titleText, setTitleText] = useState(title.split('(')[0]);
-	const [subtitleText, setSubtitleText] = useState(title.split('(')[1]);
-	const [number, setNumber] = useState(song_number);
+	const [titleText, setTitleText] = useState('');
+	const [subtitleText, setSubtitleText] = useState('');
+
+	const swipeableRef = useRef<Swipeable>(null);
 
 	useEffect(() => {
+		const [titlePart, subtitlePart] = title.split('(');
+		setTitleText(titlePart);
+		setSubtitleText(subtitlePart);
 		navigation.setOptions({
 			headerTitle: () => (
 				<View style={styles.headerTitleContainer}>
@@ -18,77 +22,78 @@ const SongDetailScreen = ({route, navigation}) => {
 				</View>
 			),
 		});
-	}, [title]);
+	}, [titleText, setTitleText, subtitleText, setSubtitleText, title]);
 
 	const getSongByNumber = (number) => {
 		return songs.find(song => song.song_number === number);
-	}
-	const getNextSong = () => {
-		return getSongByNumber(song_number + 1);
 	};
 
-	const getPrevSong = () => {
-		return getSongByNumber(song_number - 1);
+	const handleSwipe = (direction) => {
+		const song = getSongByNumber(song_number + direction);
+		if (song) {
+			navigateToSongDetail(song);
+		}
+	};
+
+	const navigateToSongDetail = (song) => {
+		navigation.navigate('SongDetail', {
+			title: song.title,
+			song_number: song.song_number,
+			verses: song.verses,
+			songs: songs
+		});
 	};
 
 	const handleSwipeLeft = () => {
 		console.log('SWIPE_RIGHT');
-		const prevSong = getPrevSong();
-		if (prevSong) {
-			navigation.navigate('SongDetail', {
-				title: prevSong.title,
-				song_number: prevSong.song_number,
-				verses: prevSong.verses,
-				songs: songs
-			});
-		}
+		handleSwipe(-1);
 	};
 
 	const handleSwipeRight = () => {
 		console.log('SWIPE_LEFT');
-		const nextSong = getNextSong();
-		if (nextSong) {
-			navigation.navigate('SongDetail', {
-				title: nextSong.title,
-				song_number: nextSong.song_number,
-				verses: nextSong.verses,
-				songs: songs
-			});
-		}
+		handleSwipe(1);
 	};
+
 
 
 	return (
 		<SafeAreaView style={styles.container}>
 			<Swipeable
-				onSwipeableLeftOpen={handleSwipeLeft}
-				onSwipeableRightOpen={handleSwipeRight}
+				ref={swipeableRef}
+				onSwipeableOpen={(direction) => {
+					if (direction === 'left') {
+						handleSwipeLeft();
+					} else if (direction === 'right') {
+						handleSwipeRight();
+					}
+					swipeableRef.current.close(); // Close the swipe box
+				}}
 				renderLeftActions={(progress, dragX) => {
-					const prevSong = getPrevSong();
+					const prevSong = getSongByNumber(song_number - 1);
 					return (
 						<View style={styles.leftSwipeBox}>
-							{prevSong && <Text style={styles.titleText}>{prevSong.song_number}</Text>}
+							{prevSong && <Text style={styles.numberText}>{prevSong.song_number}</Text>}
 						</View>
 					);
 				}}
 				renderRightActions={(progress, dragX) => {
-					const nextSong = getNextSong();
+					const nextSong = getSongByNumber(song_number + 1);
 					return (
 						<View style={styles.rightSwipeBox}>
-							{nextSong && <Text style={styles.titleText}>{nextSong.song_number}</Text>}
+							{nextSong && <Text style={styles.numberText}>{nextSong.song_number}</Text>}
 						</View>
 					);
 				}}
 			>
 				<View style={styles.swipeContentContainer}>
 					<View style={styles.swipeArrowContainer}>
-						<Icon name="arrow-back" size={30} color="grey" />
+						<Icon name="arrow-back" size={30} color="#733752" />
 					</View>
 					<ScrollView
 						contentContainerStyle={styles.contentContainer}
 					>
 						<View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-							<Text style={{fontSize: 12, textAlign: 'center'}}>({subtitleText}</Text>
+							<Text style={styles.subtitleText}>({subtitleText}</Text>
 						</View>
 						<View style={{alignSelf: 'center', paddingHorizontal: 8}}>
 							{verses.map((verse, index) => (
@@ -98,14 +103,14 @@ const SongDetailScreen = ({route, navigation}) => {
 										verse.split("\n").map((line, i) => {
 											if (line.includes('R:/')) {
 												return (
-													<Text key={i}>
+													<Text key={i} style={styles.verseLine}>
 														<Text style={{ fontWeight: 'bold' }}>R:/</Text>
-														<Text>{line.substring(3)}</Text>{"\n"}
+														<Text>{line.substring(3)}</Text>
 													</Text>
 												);
 											}
 											return (
-												<Text key={i}>
+												<Text key={i} style={styles.verseLine}>
 													{line}
 													{"\n"}
 												</Text>
@@ -117,7 +122,7 @@ const SongDetailScreen = ({route, navigation}) => {
 						</View>
 					</ScrollView>
 					<View style={styles.swipeArrowContainer}>
-						<Icon name="arrow-forward" size={30} color="grey" />
+						<Icon name="arrow-forward" size={30} color="#733752" />
 					</View>
 				</View>
 			</Swipeable>
@@ -131,7 +136,6 @@ const styles = StyleSheet.create({
 		padding: 10,
 		backgroundColor: '#fff',
 		marginBottom: 5,
-		justifyContent: 'center',
 	},
 	title: {
 		fontSize: 18,
@@ -140,7 +144,7 @@ const styles = StyleSheet.create({
 	verseContainer: {
 		flexDirection: 'row',
 		alignItems: 'flex-start',
-		marginVertical: 5,
+		marginBottom: -48
 	},
 	verseNumber: {
 		fontWeight: 'bold',
@@ -149,7 +153,10 @@ const styles = StyleSheet.create({
 		marginTop: 3,
 	},
 	verse: {
-		fontSize: 16,
+		fontSize: 18,
+	},
+	verseLine: {
+		marginBottom: 5,
 	},
 	headerTitle: {
 		flexDirection: 'row',
@@ -158,13 +165,22 @@ const styles = StyleSheet.create({
 		fontSize: 20,
 		fontWeight: 'bold',
 		textAlign: 'center',
+		color: 'white'
+	},
+	numberText: {
+		fontSize: 20,
+		fontWeight: 'bold',
+		textAlign: 'center',
+		color: '#733752'
 	},
 	titleSubtext: {
 		fontSize: 16,
-		fontWeight: 'normal',
+		fontWeight: 'bold',
 	},
 	subtitleText: {
 		fontSize: 16,
+		textAlign: 'center',
+		fontWeight: 'bold',
 	},
 	headerTitleContainer: {
 		flexDirection: 'row',

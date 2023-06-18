@@ -21,7 +21,17 @@ export default function App() {
     }
   return (
       <NavigationContainer>
-        <Stack.Navigator>
+          <Stack.Navigator
+              screenOptions={{
+                  headerStyle: {
+                      backgroundColor: '#733752',
+                  },
+                  headerTintColor: '#fff', // This will change the color of the header text (back button, title)
+                  headerTitleStyle: {
+                      fontWeight: 'bold',
+                  },
+              }}
+          >
           <Stack.Screen name="SongList" component={SongListScreen} />
           <Stack.Screen name="SongDetail" component={SongDetailScreen} />
         </Stack.Navigator>
