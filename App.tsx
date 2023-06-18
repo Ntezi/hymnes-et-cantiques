@@ -1,18 +1,30 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { createStackNavigator } from '@react-navigation/stack';
+import {useEffect, useState} from "react";
+import SongListScreen from './src/SongListScreen';
+import SongDetailScreen from './src/SongDetailScreen';
+import {NavigationContainer} from "@react-navigation/native";
+import SplashScreen from "./src/SplashScreen";
 
+const Stack = createStackNavigator();
 export default function App() {
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // Simulate a network request or some loading functionality
+        setTimeout(() => {
+            setIsLoading(false);
+        }, 5000);
+    }, []);
+
+    if (isLoading) {
+        return <SplashScreen />;
+    }
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-    </View>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen name="SongList" component={SongListScreen} />
+          <Stack.Screen name="SongDetail" component={SongDetailScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

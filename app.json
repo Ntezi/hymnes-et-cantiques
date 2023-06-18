@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Hymnes et Cantiques",
+    "slug": "hymnes-et-cantiques",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "demo",
+    "sdkVersion": "48.0.0",
+    "ios": {
+      "bundleIdentifier": "rw.ntezi.hymnes-et-cantiques",
+      "buildNumber": "1.0.0"
+    },
+    "android": {
+      "package": "rw.ntezi.hymnes_et_cantiques",
+      "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fe0b84b8-5082-4321-80e0-8c24f6461e0d"
+      }
+    },
+    "owner": "ntezi"
+  }
+}
