@@ -37,6 +37,7 @@ const SongListScreen = ({navigation}) => {
 					title: item.title,
 					song_number: item.song_number,
 					verses: item.verses,
+					sub_title: item.sub_title,
 					songs: songs
 				})
 			}

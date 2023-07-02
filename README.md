@@ -1,36 +1,41 @@
-# TypeScript Example
+# Hymnes et Cantiques App
 
-<p>
-  <!-- iOS -->
-  <img alt="Supports Expo iOS" longdesc="Supports Expo iOS" src="https://img.shields.io/badge/iOS-4630EB.svg?style=flat-square&logo=APPLE&labelColor=999999&logoColor=fff" />
-  <!-- Android -->
-  <img alt="Supports Expo Android" longdesc="Supports Expo Android" src="https://img.shields.io/badge/Android-4630EB.svg?style=flat-square&logo=ANDROID&labelColor=A4C639&logoColor=fff" />
-  <!-- Web -->
-  <img alt="Supports Expo Web" longdesc="Supports Expo Web" src="https://img.shields.io/badge/web-4630EB.svg?style=flat-square&logo=GOOGLE-CHROME&labelColor=4285F4&logoColor=fff" />
-</p>
+This is a mobile application developed in React Native and Expo for viewing the songs from the "Hymnes et Cantiques" Kinyarwanda version. The app allows users to navigate through a list of songs and view song details.
 
-```sh
-npx create-react-native-app -t with-typescript
+## Features
+
+1. **Song List Screen**: Displays a list of all the songs. Users can search songs by title or song number.
+2. **Song Detail Screen**: Displays the details of a selected song. The song number, title, subtitle, and verses are shown. Users can swipe left or right to navigate to the previous or next song.
+
+## Data
+
+The songs are stored in a JSON file, `songs.json`, in the following format:
+
+```json
+[
+    {
+        "song_number": 1,
+        "title": "TURAGUSINGIZA DATA",
+        "sub_title": "N'icyubahiro",
+        "verses": [
+            "\n1. Turagusingiza Data,...",
+            "2. Watuviriye nk'umucyo,..."
+        ]
+    },
+    ...
+]
 ```
 
-TypeScript is a superset of JavaScript which gives you static types and powerful tooling in Visual Studio Code including autocompletion and useful inline warnings for type errors.
+## Screenshots
 
-## 🚀 How to use
+[Add screenshots of your app here]
 
-#### Creating a new project
+## Setup and Installation
 
-- Install the CLI: `npm i -g expo-cli`
-- Create a project: `npx create-react-native-app -t with-typescript`
-- `cd` into the project
+To set up the application on your local machine, follow these steps:
 
-### Adding TypeScript to existing projects
-
-- Create a blank TypeScript config: `touch tsconfig.json`
-- Run `yarn start` or `npm run start` to automatically configure TypeScript
-- Rename files to TypeScript, `.tsx` for React components and `.ts` for plain typescript files
-
-> 💡 You can disable the TypeScript setup in Expo CLI with the environment variable `EXPO_NO_TYPESCRIPT_SETUP=1 expo start`
-
-## 📝 Notes
-
-- [Expo TypeScript guide](https://docs.expo.dev/versions/latest/guides/typescript/)
+1. Clone the repository to your machine.
+2. Run `npm install` to install all the dependencies.
+3. Install the Expo CLI if you haven't already, by running `npm install -g expo-cli`.
+4. Run `expo start` to start the Expo packager.
+5. Open the app on your phone using the Expo client app.
