@@ -1,19 +1,22 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {View, Text, StyleSheet, ScrollView} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity} from 'react-native';
 import SafeAreaView from "react-native-safe-area-view";
 import {Swipeable} from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SongDetailScreen = ({route, navigation}) => {
     const {song_number, verses, title, sub_title, songs} = route.params;
     const [titleText, setTitleText] = useState('');
     const [subtitleText, setSubtitleText] = useState('');
+    const [isFavorite, setIsFavorite] = useState(false);
 
     const swipeableRef = useRef<Swipeable>(null);
 
     useEffect(() => {
         setTitleText(title);
         setSubtitleText(sub_title);
+        loadFavoriteStatus();
         navigation.setOptions({
             headerTitle: () => (
                 <View style={styles.headerTitleContainer}>
@@ -22,6 +25,39 @@ const SongDetailScreen = ({route, navigation}) => {
             ),
         });
     }, [titleText, setTitleText, subtitleText, setSubtitleText, title]);
+    // Function to check if the song is in the favorites
+    const loadFavoriteStatus = async () => {
+        try {
+            const favs = await AsyncStorage.getItem('favorites');
+            if (favs !== null) {
+                const favoriteList = JSON.parse(favs);
+                setIsFavorite(favoriteList.includes(song_number));
+            }
+        } catch (e) {
+            console.error('Failed to load favorite status.');
+        }
+    };
+
+    // Function to toggle the favorite status
+    const toggleFavorite = async () => {
+        try {
+            const favs = await AsyncStorage.getItem('favorites');
+            let favoriteList = favs ? JSON.parse(favs) : [];
+            if (favoriteList.includes(song_number)) {
+                // Remove from favorites
+                favoriteList = favoriteList.filter(fav => fav !== song_number);
+                setIsFavorite(false);
+            } else {
+                // Add to favorites
+                favoriteList.push(song_number);
+                setIsFavorite(true);
+            }
+            await AsyncStorage.setItem('favorites', JSON.stringify(favoriteList));
+        } catch (e) {
+            console.error('Failed to update favorite status.');
+        }
+    };
+
 
     const getSongByNumber = (number) => {
         return songs.find(song => song.song_number === number);
@@ -86,17 +122,15 @@ const SongDetailScreen = ({route, navigation}) => {
             >
                 <View style={styles.swipeContentContainer}>
                     <View style={styles.swipeArrowContainer}>
-                        <Icon name="arrow-back" size={30} color="#733752"/>
+                        <Icon name="arrow-back" size={30} color="#733752" />
                     </View>
-                    <ScrollView
-                        contentContainerStyle={styles.contentContainer}
-                    >
-                        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                    <ScrollView contentContainerStyle={styles.contentContainer}>
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <Text style={styles.subtitleText}>{subtitleText}</Text>
                         </View>
-                        <View style={{alignSelf: 'center'}}>
+                        <View style={{ alignSelf: 'center' }}>
                             {verses.map((verse, index) => (
-                                <View key={index} style={{...styles.verseContainer, marginBottom: 10}}>
+                                <View key={index} style={{ ...styles.verseContainer, marginBottom: 10 }}>
                                     <Text style={styles.verse} key={index}>{
                                         verse.split("\n").map((line, i) => {
                                             if (line.includes('R:/')) {
@@ -135,9 +169,16 @@ const SongDetailScreen = ({route, navigation}) => {
                         </View>
                     </ScrollView>
                     <View style={styles.swipeArrowContainer}>
-                        <Icon name="arrow-forward" size={30} color="#733752"/>
+                        <Icon name="arrow-forward" size={30} color="#733752" />
                     </View>
                 </View>
+
+                {/* Add to Favorites Button */}
+                <TouchableOpacity onPress={toggleFavorite} style={styles.favoriteButton}>
+                    <Text style={styles.favoriteButtonText}>
+                        {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                    </Text>
+                </TouchableOpacity>
             </Swipeable>
         </SafeAreaView>
     );
@@ -252,6 +293,18 @@ const styles = StyleSheet.create({
         width: 25,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    favoriteButton: {
+        padding: 15,
+        backgroundColor: '#733752',
+        alignItems: 'center',
+        borderRadius: 5,
+        marginVertical: 10,
+    },
+    favoriteButtonText: {
+        fontSize: 16,
+        color: 'white',
+        fontWeight: 'bold',
     },
 
 });

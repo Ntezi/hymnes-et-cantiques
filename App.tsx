@@ -4,6 +4,7 @@ import SongListScreen from './src/SongListScreen';
 import SongDetailScreen from './src/SongDetailScreen';
 import {NavigationContainer} from "@react-navigation/native";
 import SplashScreen from "./src/SplashScreen";
+import FavoriteSongsScreen from "./src/FavoriteSongsScreen";
 
 const Stack = createStackNavigator();
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
           >
           <Stack.Screen name="SongList" component={SongListScreen} />
           <Stack.Screen name="SongDetail" component={SongDetailScreen} />
+          <Stack.Screen name="FavoriteSongs" component={FavoriteSongsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
   );
