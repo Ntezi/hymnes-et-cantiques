@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { FavoriteCategory, RecentSong } from './types';
 import { defaultFavoriteCategories } from './data';
 
@@ -101,16 +101,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return favoriteCategories.filter(cat => cat.songIds.includes(songId));
   };
 
-  const addRecentSong = (songId: string) => {
-    const newRecent: RecentSong = {
-      songId,
-      timestamp: new Date(),
-    };
-    // Remove if already exists, then add to front
-    const filtered = recentSongs.filter(r => r.songId !== songId);
-    const updated = [newRecent, ...filtered].slice(0, 20); // Keep last 20
-    setRecentSongs(updated);
-  };
+  const addRecentSong = useCallback((songId: string) => {
+    setRecentSongs(prevRecentSongs => {
+      const newRecent: RecentSong = {
+        songId,
+        timestamp: new Date(),
+      };
+      // Remove if already exists, then add to front
+      const filtered = prevRecentSongs.filter(r => r.songId !== songId);
+      const updated = [newRecent, ...filtered].slice(0, 20); // Keep last 20
+      return updated;
+    });
+  }, []);
 
   return (
     <AppContext.Provider

@@ -41,10 +41,10 @@ export const songs: Song[] = [
         type: 'verse',
         lines: [
           'Turagusingiza Data,',
-          "Wow'utuye mu mucyo mwinshi,",
+          'Wow\'utuye mu mucyo mwinshi,',
           'Urondora ibiyo mu ijuru.',
           'Duteraniye neza yawe',
-          "Kubw'urukundo rwawe rwinshi,",
+          'Kubw\'urukundo rwawe rwinshi,',
           'Tugushima bitangiye.',
         ],
       },
@@ -52,8 +52,8 @@ export const songs: Song[] = [
         number: 2,
         type: 'verse',
         lines: [
-          'Shimwa, habw'ikuzo, Muremyi wa byose:',
-          'Alleluya, shimwa, kuzwa, Man'ikiza!',
+          'Shimwa, habw\'ikuzo, Muremyi wa byose:',
+          'Alleluya, shimwa, kuzwa, Man\'ikiza!',
           'Alleluya, Alleluya!',
         ],
       },
@@ -61,8 +61,8 @@ export const songs: Song[] = [
         number: 3,
         type: 'verse',
         lines: [
-          'Watviriye nk'umucyo,',
-          'Mana Data, ni kw'ubuntu,',
+          'Watviriye nk\'umucyo,',
+          'Mana Data, ni kw\'ubuntu,',
           'Muri Yesu, Umwana wkunda.',
           'Kubwe ubugingo bwacu',
           'Burakuramya, bugushima,',
@@ -73,7 +73,7 @@ export const songs: Song[] = [
         type: 'chorus',
         lines: [
           'Shimwa, habwa ikuzo, Muremyi wa byose:',
-          'Alleluya, shimwa, kuzwa, Man'ikiza!',
+          'Alleluya, shimwa, kuzwa, Man\'ikiza!',
           'Alleluya, Alleluya!',
         ],
       },
