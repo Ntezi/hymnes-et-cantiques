@@ -44,3 +44,7 @@ To set up the application on your local machine, follow these steps:
 3. Install the Expo CLI if you haven't already, by running `npm install -g expo-cli`.
 4. Run `expo start` to start the Expo packager.
 5. Open the app on your phone using the Expo client app.
+
+
+## EAS Build
+`eas build --profile preview`

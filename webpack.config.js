@@ -14,5 +14,14 @@ module.exports = async function(env, argv) {
             })
         }
     })
+
+    config.ignoreWarnings = [
+        ...(config.ignoreWarnings || []),
+        {
+            module: /node_modules\/@react-navigation\/(stack|native|elements)\//,
+            message: /Failed to parse source map/,
+        },
+    ];
+
     return config;
 };

@@ -5,16 +5,17 @@ import SongDetailScreen from './src/SongDetailScreen';
 import {NavigationContainer} from "@react-navigation/native";
 import SplashScreen from "./src/SplashScreen";
 import FavoriteSongsScreen from "./src/FavoriteSongsScreen";
+import { useKeepAwake } from 'expo-keep-awake';
 
 const Stack = createStackNavigator();
 export default function App() {
+    useKeepAwake();
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Simulate a network request or some loading functionality
         setTimeout(() => {
             setIsLoading(false);
-        }, 5000);
+        }, 2500);
     }, []);
 
     if (isLoading) {
@@ -25,11 +26,16 @@ export default function App() {
           <Stack.Navigator
               screenOptions={{
                   headerStyle: {
-                      backgroundColor: '#733752',
+                      backgroundColor: '#6d3549',
+                      elevation: 0,
+                      shadowOpacity: 0,
                   },
-                  headerTintColor: '#fff', // This will change the color of the header text (back button, title)
+                  cardStyle: {
+                      backgroundColor: '#fafafa',
+                  },
+                  headerTintColor: '#fff',
                   headerTitleStyle: {
-                      fontWeight: 'bold',
+                      fontWeight: '600',
                   },
               }}
           >
