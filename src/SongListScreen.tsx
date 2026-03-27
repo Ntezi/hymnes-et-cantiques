@@ -7,12 +7,12 @@ import {
 	FlatList,
 	TextInput,
 	ScrollView,
+	Alert,
 } from 'react-native';
 import SafeAreaView from "react-native-safe-area-view";
 import Icon from 'react-native-vector-icons/Ionicons';
 import {
 	AppSong,
-	DEFAULT_COLLECTION_ID,
 	ENABLE_COLLECTION_FILTERS,
 	getCollectionById,
 	getCollections,
@@ -20,14 +20,16 @@ import {
 	getSongTypeOptions,
 } from './library';
 import { loadFavoriteSongIds } from './favorites';
+import { useAppState } from './appState';
+import QuickNumberSheet from './QuickNumberSheet';
 
 const SongListScreen = ({ navigation }) => {
 	const collections = useMemo(() => getCollections(), []);
-	const initialCollectionId = collections[0]?.id || DEFAULT_COLLECTION_ID;
+	const { selectedCollectionId, setSelectedCollectionId } = useAppState();
 	const [search, setSearch] = useState('');
 	const [favoriteSongIds, setFavoriteSongIds] = useState<string[]>([]);
 	const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-	const [selectedCollectionId, setSelectedCollectionId] = useState(initialCollectionId);
+	const [isQuickNumberVisible, setIsQuickNumberVisible] = useState(false);
 	const [selectedSongType, setSelectedSongType] = useState('all');
 
 	const selectedCollection = useMemo(
@@ -51,10 +53,10 @@ const SongListScreen = ({ navigation }) => {
 	const languageNavOptions = useMemo(() => getLanguageNavOptions(), [collections]);
 
 	useEffect(() => {
-		if (!collections.find(collection => collection.id === selectedCollectionId)) {
-			setSelectedCollectionId(initialCollectionId);
+		if (!selectedCollection && collections[0]) {
+			setSelectedCollectionId(collections[0].id);
 		}
-	}, [collections, selectedCollectionId, initialCollectionId]);
+	}, [collections, selectedCollection, setSelectedCollectionId]);
 
 	useEffect(() => {
 		navigation.setOptions({
@@ -63,23 +65,18 @@ const SongListScreen = ({ navigation }) => {
 				fontSize: 18,
 				fontWeight: '600',
 			},
-			headerRight: () => (
-				<TouchableOpacity onPress={() => navigation.navigate('FavoriteSongs')}>
-					<Icon name="heart" size={22} color="#FFFFFF" style={{ marginRight: 15 }} />
-				</TouchableOpacity>
-			),
 		});
 	}, [navigation, selectedCollection]);
 
 	useEffect(() => {
 		const unsubscribe = navigation.addListener('focus', async () => {
-			const loaded = await loadFavoriteSongIds(DEFAULT_COLLECTION_ID);
-			setFavoriteSongIds(loaded);
+			const loadedFavorites = await loadFavoriteSongIds();
+			setFavoriteSongIds(loadedFavorites);
 		});
 
 		(async () => {
-			const loaded = await loadFavoriteSongIds(DEFAULT_COLLECTION_ID);
-			setFavoriteSongIds(loaded);
+			const loadedFavorites = await loadFavoriteSongIds();
+			setFavoriteSongIds(loadedFavorites);
 		})();
 
 		return unsubscribe;
@@ -121,6 +118,17 @@ const SongListScreen = ({ navigation }) => {
 			...song,
 			songs: filteredSongs,
 		});
+	};
+
+	const onSubmitQuickNumber = (songNumber: number) => {
+		const matchedSong = collectionSongs.find(song => song.song_number === songNumber);
+		if (!matchedSong) {
+			Alert.alert('Song not found', `No song #${songNumber} in this collection.`);
+			return;
+		}
+
+		setIsQuickNumberVisible(false);
+		navigateToSong(matchedSong);
 	};
 
 	const renderListItem = ({ item }: { item: AppSong }) => (
@@ -234,11 +242,11 @@ const SongListScreen = ({ navigation }) => {
 					</>
 				) : null}
 
-				<View style={styles.searchWrap}>
-					<Icon name="search-outline" size={18} color="#999999" style={styles.searchIcon} />
-					<TextInput
-						placeholder="Andika numero cg title..."
-						placeholderTextColor="#999999"
+					<View style={styles.searchWrap}>
+						<Icon name="search-outline" size={18} color="#999999" style={styles.searchIcon} />
+						<TextInput
+							placeholder="Andika numero cg title..."
+							placeholderTextColor="#999999"
 						onChangeText={setSearch}
 						value={search}
 						style={styles.searchInput}
@@ -251,14 +259,14 @@ const SongListScreen = ({ navigation }) => {
 							name={viewMode === 'list' ? 'grid-outline' : 'list-outline'}
 							size={18}
 							color="#666666"
-						/>
-					</TouchableOpacity>
-				</View>
+							/>
+						</TouchableOpacity>
+					</View>
 
-				{filteredSongs.length === 0 ? (
-					<View style={styles.emptyStateWrap}>
-						<Icon name="albums-outline" size={32} color="#c28c9b" />
-						<Text style={styles.emptyStateTitle}>No Songs in This View</Text>
+					{filteredSongs.length === 0 ? (
+						<View style={styles.emptyStateWrap}>
+							<Icon name="albums-outline" size={32} color="#c28c9b" />
+							<Text style={styles.emptyStateTitle}>No Songs in This View</Text>
 						<Text style={styles.emptyStateText}>
 							{ENABLE_COLLECTION_FILTERS
 								? 'Change collection, language, or song type filters.'
@@ -280,13 +288,27 @@ const SongListScreen = ({ navigation }) => {
 						renderItem={renderGridItem}
 						keyExtractor={(item) => item.song_id}
 						contentContainerStyle={styles.gridContent}
-						columnWrapperStyle={styles.gridRow}
+							columnWrapperStyle={styles.gridRow}
+						/>
+					)}
+
+					<TouchableOpacity
+						style={styles.quickNumberFab}
+						onPress={() => setIsQuickNumberVisible(true)}
+						activeOpacity={0.85}
+					>
+						<Icon name="keypad-outline" size={22} color="#ffffff" />
+					</TouchableOpacity>
+
+					<QuickNumberSheet
+						visible={isQuickNumberVisible}
+						onClose={() => setIsQuickNumberVisible(false)}
+						onSubmit={onSubmitQuickNumber}
 					/>
-				)}
-			</View>
-		</SafeAreaView>
-	);
-}
+				</View>
+			</SafeAreaView>
+		);
+	}
 
 const styles = StyleSheet.create({
 	container: {
@@ -363,7 +385,7 @@ const styles = StyleSheet.create({
 	},
 	listContent: {
 		paddingHorizontal: 16,
-		paddingBottom: 16,
+		paddingBottom: 96,
 	},
 	songCard: {
 		backgroundColor: '#ffffff',
@@ -426,7 +448,7 @@ const styles = StyleSheet.create({
 	},
 	gridContent: {
 		paddingHorizontal: 12,
-		paddingBottom: 14,
+		paddingBottom: 96,
 	},
 	gridRow: {
 		justifyContent: 'space-between',
@@ -477,6 +499,22 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		textAlign: 'center',
 		color: '#666666',
+	},
+	quickNumberFab: {
+		position: 'absolute',
+		right: 18,
+		bottom: 18,
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: '#6d3549',
+		alignItems: 'center',
+		justifyContent: 'center',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 3 },
+		shadowOpacity: 0.2,
+		shadowRadius: 6,
+		elevation: 6,
 	},
 });
 

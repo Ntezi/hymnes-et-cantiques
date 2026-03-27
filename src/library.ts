@@ -41,7 +41,7 @@ export const SONG_TYPE_LABELS: Record<SongTypeId, string> = {
 };
 
 export const DEFAULT_COLLECTION_ID = 'hymnes-rw';
-export const ENABLE_COLLECTION_CATALOG = false;
+export const ENABLE_COLLECTION_CATALOG = true;
 export const ENABLE_COLLECTION_FILTERS = false;
 
 const buildSongId = (collectionId: string, songNumber: number) => `${collectionId}:${songNumber}`;
@@ -93,7 +93,7 @@ export const COLLECTION_CATALOG: CollectionItem[] = [
 
 export const getCollections = (): CollectionItem[] =>
 	ENABLE_COLLECTION_CATALOG
-		? COLLECTION_CATALOG
+		? COLLECTION_CATALOG.filter(collection => collection.songs.length > 0)
 		: COLLECTION_CATALOG.filter(collection => collection.id === DEFAULT_COLLECTION_ID);
 
 export const getCollectionById = (collectionId: string): CollectionItem | undefined =>

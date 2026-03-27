@@ -2,8 +2,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import SafeAreaView from "react-native-safe-area-view";
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AppSong, DEFAULT_COLLECTION_ID } from './library';
-import { loadFavoriteSongIds, saveFavoriteSongIds } from './favorites';
+import { AppSong, getAllSongs, getCollectionById } from './library';
+import { addRecentSongId } from './recentSongs';
+import AddToFavoriteSheet from './AddToFavoriteSheet';
+import SameMelodySheet from './SameMelodySheet';
+import {
+	FavoriteCategory,
+	getSongFavoriteCategories,
+	isSongInAnyFavoriteCategory,
+	loadFavoriteCategories,
+} from './favoriteCategories';
+import {
+	getSameMelodySongIds,
+	loadMelodyLinkMap,
+	setSameMelodySongIds,
+} from './melodyLinks';
 
 const REPEAT_MARKER_SPLIT_REGEX = /(\((?:bis|ter|x\d+)\)|\bbis\b|\bter\b|\bx\d+\b|R:\/?)/gi;
 const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
@@ -16,13 +29,21 @@ const SongDetailScreen = ({ route, navigation }) => {
 		verses,
 		title,
 		sub_title,
+		collection_id,
 		collection_name,
+		library_name,
+		language_code,
 		language_label,
+		song_type_id,
 		song_type_label,
 		songs,
 	} = route.params as AppSong & { songs: AppSong[] };
 
-	const [favoriteSongIds, setFavoriteSongIds] = useState<string[]>([]);
+	const allSongs = useMemo(() => getAllSongs(), []);
+	const [favoriteCategories, setFavoriteCategories] = useState<FavoriteCategory[]>([]);
+	const [isFavoriteSheetVisible, setIsFavoriteSheetVisible] = useState(false);
+	const [sameMelodySongIds, setSameMelodySongIdsState] = useState<string[]>([]);
+	const [isSameMelodySheetVisible, setIsSameMelodySheetVisible] = useState(false);
 
 	useEffect(() => {
 		navigation.setOptions({
@@ -34,35 +55,53 @@ const SongDetailScreen = ({ route, navigation }) => {
 		});
 
 		(async () => {
-			const loaded = await loadFavoriteSongIds(DEFAULT_COLLECTION_ID);
-			setFavoriteSongIds(loaded);
+			const [loadedCategories, melodyLinkMap] = await Promise.all([
+				loadFavoriteCategories(),
+				loadMelodyLinkMap(),
+			]);
+			setFavoriteCategories(loadedCategories);
+			setSameMelodySongIdsState(getSameMelodySongIds(song_id, melodyLinkMap));
+			await addRecentSongId(song_id);
 		})();
-	}, [navigation, song_number, title]);
+	}, [navigation, song_number, title, song_id]);
 
-	const isFavorite = useMemo(() => favoriteSongIds.includes(song_id), [favoriteSongIds, song_id]);
+	const isFavorite = useMemo(
+		() => isSongInAnyFavoriteCategory(favoriteCategories, song_id),
+		[favoriteCategories, song_id]
+	);
 
-	const toggleFavorite = async () => {
-		const updated = isFavorite
-			? favoriteSongIds.filter(id => id !== song_id)
-			: [...favoriteSongIds, song_id];
+	const songCategoryCount = useMemo(
+		() => getSongFavoriteCategories(favoriteCategories, song_id).length,
+		[favoriteCategories, song_id]
+	);
 
-		setFavoriteSongIds(updated);
-		await saveFavoriteSongIds(updated);
-	};
+	const sameMelodySongs = useMemo(
+		() =>
+			sameMelodySongIds
+				.map(linkedSongId => allSongs.find(song => song.song_id === linkedSongId))
+				.filter((song): song is AppSong => Boolean(song)),
+		[sameMelodySongIds, allSongs]
+	);
 
 	const currentIndex = songs.findIndex(song => song.song_id === song_id);
 	const previousSong = currentIndex > 0 ? songs[currentIndex - 1] : null;
 	const nextSong = currentIndex >= 0 && currentIndex < songs.length - 1 ? songs[currentIndex + 1] : null;
 
-	const navigateToSongDetail = (song: AppSong | null) => {
+	const navigateToSongDetail = (song: AppSong | null, songSequence: AppSong[] = songs) => {
 		if (!song) {
 			return;
 		}
 
 		navigation.replace('SongDetail', {
 			...song,
-			songs,
+			songs: songSequence,
 		});
+	};
+
+	const saveSameMelodySongs = async (linkedSongIds: string[]) => {
+		const updatedLinkMap = await setSameMelodySongIds(song_id, linkedSongIds);
+		setSameMelodySongIdsState(getSameMelodySongIds(song_id, updatedLinkMap));
+		setIsSameMelodySheetVisible(false);
 	};
 
 	const renderPatternAwareText = (text: string, lineKey: string) =>
@@ -102,7 +141,19 @@ const SongDetailScreen = ({ route, navigation }) => {
 				<ScrollView contentContainerStyle={styles.contentContainer}>
 					<View style={styles.songHeaderCard}>
 						<TouchableOpacity
-							onPress={toggleFavorite}
+							onPress={() => setIsSameMelodySheetVisible(true)}
+							style={styles.melodyHeaderButton}
+							activeOpacity={0.85}
+						>
+							<Icon
+								name={sameMelodySongs.length > 0 ? "musical-notes" : "musical-notes-outline"}
+								size={19}
+								color={sameMelodySongs.length > 0 ? '#6d3549' : '#8f4b5d'}
+							/>
+						</TouchableOpacity>
+
+						<TouchableOpacity
+							onPress={() => setIsFavoriteSheetVisible(true)}
 							style={styles.favoriteHeaderButton}
 							activeOpacity={0.85}
 						>
@@ -120,6 +171,20 @@ const SongDetailScreen = ({ route, navigation }) => {
 					{sub_title ? (
 						<Text style={styles.songSubtitle}>{sub_title}</Text>
 					) : null}
+						{isFavorite ? (
+							<Text style={styles.favoriteSummaryText}>
+								In {songCategoryCount} {songCategoryCount === 1 ? 'favorite category' : 'favorite categories'}
+							</Text>
+						) : (
+						<Text style={styles.favoriteSummaryTextMuted}>
+							Not in favorites yet
+						</Text>
+					)}
+					{sameMelodySongs.length > 0 ? (
+						<Text style={styles.sameMelodySummaryText}>
+							Same melody linked: {sameMelodySongs.length}
+						</Text>
+					) : null}
 
 					{/* <View style={styles.metadataRow}>
 						<View style={styles.metadataChip}>
@@ -134,7 +199,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 					</View> */}
 				</View>
 
-				<View style={styles.versesWrap}>
+					<View style={styles.versesWrap}>
 					{verses.map((verse, index) => {
 						const lines = verse.split('\n').map(line => line.trim()).filter(Boolean);
 						const isRefrain = lines.some(line => line.includes('R:/'));
@@ -147,7 +212,45 @@ const SongDetailScreen = ({ route, navigation }) => {
 						})}
 					</View>
 
-					<View style={styles.songNavRow}>
+				<View style={styles.sameMelodySection}>
+					<View style={styles.sameMelodyHeaderRow}>
+						<Icon name="musical-notes-outline" size={16} color="#6d3549" />
+						<Text style={styles.sameMelodyTitle}>Same Tone / Melody</Text>
+					</View>
+					{sameMelodySongs.length === 0 ? (
+						<Text style={styles.sameMelodyEmptyText}>
+							No linked songs yet. Tap the note icon above to add songs with the same melody.
+						</Text>
+					) : (
+						sameMelodySongs.map((sameMelodySong) => (
+							<TouchableOpacity
+								key={sameMelodySong.song_id}
+								style={styles.sameMelodyCard}
+								onPress={() =>
+									navigateToSongDetail(
+										sameMelodySong,
+										getCollectionById(sameMelodySong.collection_id)?.songs || [sameMelodySong]
+									)
+								}
+							>
+								<View style={styles.sameMelodyNumberBadge}>
+									<Text style={styles.sameMelodyNumberText}>{sameMelodySong.song_number}</Text>
+								</View>
+								<View style={styles.sameMelodyMeta}>
+									<Text style={styles.sameMelodySongTitle} numberOfLines={1}>
+										{sameMelodySong.title}
+									</Text>
+									<Text style={styles.sameMelodySongSubtitle} numberOfLines={1}>
+										{sameMelodySong.collection_name} • {sameMelodySong.language_label}
+									</Text>
+								</View>
+								<Icon name="chevron-forward" size={18} color="#b3b3b3" />
+							</TouchableOpacity>
+						))
+					)}
+				</View>
+
+				<View style={styles.songNavRow}>
 					<TouchableOpacity
 						style={[styles.navButton, !previousSong && styles.navButtonDisabled]}
 						disabled={!previousSong}
@@ -167,6 +270,33 @@ const SongDetailScreen = ({ route, navigation }) => {
 					</TouchableOpacity>
 				</View>
 			</ScrollView>
+			<AddToFavoriteSheet
+				visible={isFavoriteSheetVisible}
+				songId={song_id}
+				onClose={() => setIsFavoriteSheetVisible(false)}
+				onUpdated={setFavoriteCategories}
+			/>
+			<SameMelodySheet
+				visible={isSameMelodySheetVisible}
+				currentSong={{
+					song_id,
+					song_number,
+					title,
+					sub_title,
+					verses,
+					collection_id,
+					collection_name,
+					library_name,
+					language_code,
+					language_label,
+					song_type_id,
+					song_type_label,
+				}}
+				allSongs={allSongs}
+				selectedSongIds={sameMelodySongIds}
+				onClose={() => setIsSameMelodySheetVisible(false)}
+				onSave={saveSameMelodySongs}
+			/>
 		</SafeAreaView>
 	);
 };
@@ -209,6 +339,19 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
+	melodyHeaderButton: {
+		position: 'absolute',
+		top: 10,
+		left: 10,
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
 	songNumberBadge: {
 		width: 56,
 		height: 56,
@@ -236,6 +379,24 @@ const styles = StyleSheet.create({
 		color: '#666666',
 		marginTop: 6,
 		textAlign: 'center',
+	},
+	favoriteSummaryText: {
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#6d3549',
+		marginTop: 10,
+	},
+	favoriteSummaryTextMuted: {
+		fontSize: 12,
+		fontWeight: '500',
+		color: '#999999',
+		marginTop: 10,
+	},
+	sameMelodySummaryText: {
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#6d3549',
+		marginTop: 4,
 	},
 	metadataRow: {
 		flexDirection: 'row',
@@ -304,6 +465,64 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		marginTop: 12,
+	},
+	sameMelodySection: {
+		marginTop: 4,
+		marginBottom: 2,
+	},
+	sameMelodyHeaderRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		marginBottom: 8,
+	},
+	sameMelodyTitle: {
+		fontSize: 14,
+		fontWeight: '700',
+		color: '#6d3549',
+		marginLeft: 6,
+	},
+	sameMelodyCard: {
+		backgroundColor: '#ffffff',
+		borderWidth: 1,
+		borderColor: '#e6e6e6',
+		borderRadius: 12,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		marginBottom: 8,
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	sameMelodyNumberBadge: {
+		width: 34,
+		height: 34,
+		borderRadius: 10,
+		backgroundColor: '#f5e0e9',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	sameMelodyNumberText: {
+		fontSize: 14,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
+	sameMelodyMeta: {
+		marginLeft: 10,
+		flex: 1,
+	},
+	sameMelodySongTitle: {
+		fontSize: 14,
+		fontWeight: '600',
+		color: '#1a1a1a',
+	},
+	sameMelodySongSubtitle: {
+		marginTop: 1,
+		fontSize: 12,
+		color: '#666666',
+	},
+	sameMelodyEmptyText: {
+		fontSize: 12,
+		color: '#666666',
+		marginBottom: 8,
 	},
 	navButton: {
 		backgroundColor: '#ffffff',
