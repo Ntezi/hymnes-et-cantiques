@@ -32,7 +32,7 @@ const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
 const VERSE_NUMBER_REGEX = /^(\d+)\.\s*(.*)$/;
 const WHITESPACE_SEGMENT_REGEX = /^\s+$/;
 const SHOW_MELODY_PLAYBACK = true;
-const LYRIC_SYNC_LEAD_MS = 5200;
+const LYRIC_SYNC_LEAD_MS = 6800;
 
 const tokenizeLyricWords = (text: string): string[] =>
 	text
