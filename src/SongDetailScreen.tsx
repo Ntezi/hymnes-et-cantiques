@@ -32,7 +32,7 @@ const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
 const VERSE_NUMBER_REGEX = /^(\d+)\.\s*(.*)$/;
 const WHITESPACE_SEGMENT_REGEX = /^\s+$/;
 const SHOW_MELODY_PLAYBACK = true;
-const LYRIC_SYNC_LEAD_MS = 1600;
+const LYRIC_SYNC_LEAD_MS = 2600;
 
 const tokenizeLyricWords = (text: string): string[] =>
 	text
@@ -73,6 +73,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [sameMelodySongIds, setSameMelodySongIdsState] = useState<string[]>([]);
 	const [isSameMelodySheetVisible, setIsSameMelodySheetVisible] = useState(false);
 	const [isLanguageSheetVisible, setIsLanguageSheetVisible] = useState(false);
+	const [isMelodyControlVisible, setIsMelodyControlVisible] = useState(false);
 	const [melodyReloadKey, setMelodyReloadKey] = useState(0);
 	const [isMelodyLoading, setIsMelodyLoading] = useState(false);
 	const [melodyError, setMelodyError] = useState<string | null>(null);
@@ -80,6 +81,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [playbackDurationMs, setPlaybackDurationMs] = useState(0);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isBuffering, setIsBuffering] = useState(false);
+	const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
 	const scrollViewRef = useRef<ScrollView | null>(null);
 	const lineOffsetMapRef = useRef<Record<string, number>>({});
 	const lastAutoScrollLineRef = useRef<string | null>(null);
@@ -99,17 +101,26 @@ const SongDetailScreen = ({ route, navigation }) => {
 		[melodyMetadata?.melody_url]
 	);
 	const hasMelodySource = Boolean(localAsset || melodySourceUri);
+	const shouldHighlightLyrics = hasPlaybackStarted || isPlaying;
 	const lyricSyncPositionMs = useMemo(
 		() => Math.max(0, playbackPositionMs + LYRIC_SYNC_LEAD_MS),
 		[playbackPositionMs]
 	);
 	const activeLineKey = useMemo(
-		() => (SHOW_MELODY_PLAYBACK ? getActiveTimedLineKey(song_id, lyricSyncPositionMs) : null),
-		[song_id, lyricSyncPositionMs]
+		() => (
+			SHOW_MELODY_PLAYBACK && shouldHighlightLyrics
+				? getActiveTimedLineKey(song_id, lyricSyncPositionMs)
+				: null
+		),
+		[song_id, lyricSyncPositionMs, shouldHighlightLyrics]
 	);
 	const activeTimedLine = useMemo(
-		() => (SHOW_MELODY_PLAYBACK ? getActiveTimedLine(song_id, lyricSyncPositionMs) : null),
-		[song_id, lyricSyncPositionMs]
+		() => (
+			SHOW_MELODY_PLAYBACK && shouldHighlightLyrics
+				? getActiveTimedLine(song_id, lyricSyncPositionMs)
+				: null
+		),
+		[song_id, lyricSyncPositionMs, shouldHighlightLyrics]
 	);
 	const fallbackDurationMs = useMemo(
 		() => melodyMetadata?.timed_lines[melodyMetadata.timed_lines.length - 1]?.end_ms || 0,
@@ -180,10 +191,12 @@ const SongDetailScreen = ({ route, navigation }) => {
 		lineOffsetMapRef.current = {};
 		lastAutoScrollLineRef.current = null;
 		setIsLanguageSheetVisible(false);
+		setIsMelodyControlVisible(false);
 		setPlaybackPositionMs(0);
 		setPlaybackDurationMs(0);
 		setIsPlaying(false);
 		setIsBuffering(false);
+		setHasPlaybackStarted(false);
 		setMelodyError(null);
 
 		const loadMelody = async () => {
@@ -309,6 +322,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 		setPlaybackDurationMs(status.durationMillis || 0);
 		setIsPlaying(Boolean(status.isPlaying));
 		setIsBuffering(Boolean(status.isBuffering));
+		if (status.isPlaying || (status.positionMillis || 0) > 0) {
+			setHasPlaybackStarted(true);
+		}
 	};
 
 	const onTogglePlayPause = async () => {
@@ -324,6 +340,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 				await audioService.pauseAsync();
 			} else {
 				console.log("onTogglePlayPause: Playing");
+				setHasPlaybackStarted(true);
 				await audioService.playAsync();
 			}
 		} catch (err) {
@@ -335,6 +352,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const onStopPlayback = async () => {
 		try {
 			await audioService.stopAsync();
+			setHasPlaybackStarted(false);
+			setPlaybackPositionMs(0);
 		} catch {
 			setMelodyError(t('songDetail.unableToStopPlayback'));
 		}
@@ -489,6 +508,22 @@ const SongDetailScreen = ({ route, navigation }) => {
 							/>
 						</TouchableOpacity>
 
+						<TouchableOpacity
+							onPress={() => setIsMelodyControlVisible((prev) => !prev)}
+							style={[
+								styles.audioHeaderButton,
+								!hasMelodySource && styles.audioHeaderButtonDisabled,
+							]}
+							activeOpacity={0.85}
+							disabled={!hasMelodySource}
+						>
+							<Icon
+								name={isMelodyControlVisible ? 'volume-high' : 'volume-medium-outline'}
+								size={19}
+								color={hasMelodySource ? '#6d3549' : '#b3b3b3'}
+							/>
+						</TouchableOpacity>
+
 						<View style={styles.songNumberBadge}>
 							<Text style={styles.songNumberBadgeText}>{song_number}</Text>
 						</View>
@@ -536,7 +571,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 					</View> */}
 				</View>
 
-				{SHOW_MELODY_PLAYBACK ? (
+				{SHOW_MELODY_PLAYBACK && isMelodyControlVisible ? (
 					<MelodyPlayerControl
 						isReady={isMelodyReady}
 						isLoading={isMelodyLoading}
@@ -696,6 +731,7 @@ const styles = StyleSheet.create({
 		borderRadius: 16,
 		paddingHorizontal: 16,
 		paddingVertical: 20,
+		paddingBottom: 28,
 		alignItems: 'center',
 		marginBottom: 14,
 		shadowColor: '#000',
@@ -737,6 +773,23 @@ const styles = StyleSheet.create({
 		borderColor: '#f5d6e1',
 		alignItems: 'center',
 		justifyContent: 'center',
+	},
+	audioHeaderButton: {
+		position: 'absolute',
+		bottom: 10,
+		left: 10,
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	audioHeaderButtonDisabled: {
+		borderColor: '#ececec',
+		backgroundColor: '#f7f7f7',
 	},
 	songNumberBadge: {
 		width: 56,
