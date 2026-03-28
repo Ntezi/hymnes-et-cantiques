@@ -32,7 +32,7 @@ const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
 const VERSE_NUMBER_REGEX = /^(\d+)\.\s*(.*)$/;
 const WHITESPACE_SEGMENT_REGEX = /^\s+$/;
 const SHOW_MELODY_PLAYBACK = true;
-const LYRIC_SYNC_LEAD_MS = 2600;
+const LYRIC_SYNC_LEAD_MS = 5200;
 
 const tokenizeLyricWords = (text: string): string[] =>
 	text
@@ -101,7 +101,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 		[melodyMetadata?.melody_url]
 	);
 	const hasMelodySource = Boolean(localAsset || melodySourceUri);
-	const shouldHighlightLyrics = hasPlaybackStarted || isPlaying;
+	const shouldHighlightLyrics = hasPlaybackStarted && (isPlaying || playbackPositionMs > 0);
 	const lyricSyncPositionMs = useMemo(
 		() => Math.max(0, playbackPositionMs + LYRIC_SYNC_LEAD_MS),
 		[playbackPositionMs]
