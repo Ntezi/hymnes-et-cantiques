@@ -14,20 +14,29 @@ export interface SongMelodyMetadata {
 	timed_lines: TimedLyricLine[];
 }
 
-const SONG_MELODY_METADATA = require('./melodyMetadata.json') as Record<string, SongMelodyMetadata>;
+const GENERATED_SONG_MELODY_METADATA =
+	require('./melodyMetadata.generated.json') as Record<string, SongMelodyMetadata>;
+const MANUAL_SONG_MELODY_METADATA =
+	require('./melodyMetadata.json') as Record<string, SongMelodyMetadata>;
+const SONG_MELODY_METADATA: Record<string, SongMelodyMetadata> = {
+	...GENERATED_SONG_MELODY_METADATA,
+	...MANUAL_SONG_MELODY_METADATA,
+};
 
 export const getSongMelodyMetadata = (songId: string): SongMelodyMetadata | null =>
 	SONG_MELODY_METADATA[songId] || null;
 
-export const getActiveTimedLineKey = (songId: string, positionMs: number): string | null => {
+export const getActiveTimedLine = (songId: string, positionMs: number): TimedLyricLine | null => {
 	const melodyMetadata = getSongMelodyMetadata(songId);
 	if (!melodyMetadata || !melodyMetadata.has_timing) {
 		return null;
 	}
 
-	const activeLine = melodyMetadata.timed_lines.find(
+	return melodyMetadata.timed_lines.find(
 		(line) => positionMs >= line.start_ms && positionMs < line.end_ms
-	);
+	) || null;
+};
 
-	return activeLine?.line_key || null;
+export const getActiveTimedLineKey = (songId: string, positionMs: number): string | null => {
+	return getActiveTimedLine(songId, positionMs)?.line_key || null;
 };

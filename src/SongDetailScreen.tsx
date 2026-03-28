@@ -9,7 +9,7 @@ import SameMelodySheet from './SameMelodySheet';
 import { AVPlaybackStatusSuccess } from 'expo-av';
 import MelodyPlayerControl from './MelodyPlayerControl';
 import HighlightedText from './HighlightedText';
-import { getActiveTimedLineKey, getSongMelodyMetadata } from './melodyMetadata';
+import { getActiveTimedLine, getActiveTimedLineKey, getSongMelodyMetadata } from './melodyMetadata';
 import { audioService } from './services/audioService';
 import LanguageSwitchSheet from './LanguageSwitchSheet';
 import { getCrossLanguageSongIds } from './crossLanguageMap';
@@ -30,7 +30,23 @@ import { HE_C_AUDIO } from '../audio';
 const REPEAT_MARKER_SPLIT_REGEX = /(\((?:bis|ter|x\d+)\)|\bbis\b|\bter\b|\bx\d+\b|R:\/?)/gi;
 const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
 const VERSE_NUMBER_REGEX = /^(\d+)\.\s*(.*)$/;
+const WHITESPACE_SEGMENT_REGEX = /^\s+$/;
 const SHOW_MELODY_PLAYBACK = true;
+
+const tokenizeLyricWords = (text: string): string[] =>
+	text
+		.split(REPEAT_MARKER_SPLIT_REGEX)
+		.filter(segment => segment.length > 0)
+		.flatMap((segment) => {
+			if (REPEAT_MARKER_REGEX.test(segment.trim())) {
+				return [];
+			}
+
+			return segment
+				.split(/\s+/)
+				.map(word => word.trim())
+				.filter(Boolean);
+		});
 
 const SongDetailScreen = ({ route, navigation }) => {
 	const { t } = useTranslation();
@@ -84,6 +100,10 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const hasMelodySource = Boolean(localAsset || melodySourceUri);
 	const activeLineKey = useMemo(
 		() => (SHOW_MELODY_PLAYBACK ? getActiveTimedLineKey(song_id, playbackPositionMs) : null),
+		[song_id, playbackPositionMs]
+	);
+	const activeTimedLine = useMemo(
+		() => (SHOW_MELODY_PLAYBACK ? getActiveTimedLine(song_id, playbackPositionMs) : null),
 		[song_id, playbackPositionMs]
 	);
 	const fallbackDurationMs = useMemo(
@@ -327,30 +347,89 @@ const SongDetailScreen = ({ route, navigation }) => {
 		setMelodyReloadKey((prev) => prev + 1);
 	};
 
-	const renderPatternAwareText = (text: string, lineKey: string, isActiveLine: boolean) =>
-		text
+	const getActiveWordIndexForLine = (
+		lineKey: string,
+		lineText: string,
+		isActiveLine: boolean
+	): number | null => {
+		if (!isActiveLine || !activeTimedLine || activeTimedLine.line_key !== lineKey) {
+			return null;
+		}
+
+		const words = tokenizeLyricWords(lineText);
+		if (words.length === 0) {
+			return null;
+		}
+
+		const lineDurationMs = Math.max(1, activeTimedLine.end_ms - activeTimedLine.start_ms);
+		const relativeProgress = Math.max(
+			0,
+			Math.min(0.9999, (playbackPositionMs - activeTimedLine.start_ms) / lineDurationMs)
+		);
+
+		return Math.min(words.length - 1, Math.floor(relativeProgress * words.length));
+	};
+
+	const renderPatternAwareText = (
+		text: string,
+		lineKey: string,
+		isActiveLine: boolean,
+		activeWordIndex: number | null
+	) => {
+		let wordCursor = 0;
+
+		return text
 			.split(REPEAT_MARKER_SPLIT_REGEX)
 			.filter(segment => segment.length > 0)
-			.map((segment, segmentIndex) => {
+			.flatMap((segment, segmentIndex) => {
 				const isRepeatToken = REPEAT_MARKER_REGEX.test(segment.trim());
-				return (
-					<HighlightedText
-						key={`${lineKey}-${segmentIndex}`}
-						isActive={isActiveLine}
-						style={isRepeatToken ? styles.singingInstructions : styles.verseText}
-						activeStyle={isRepeatToken ? styles.activeSingingInstructions : styles.activeVerseText}
-					>
-						{segment}
-					</HighlightedText>
-				);
+				if (isRepeatToken) {
+					return [
+						<HighlightedText
+							key={`${lineKey}-repeat-${segmentIndex}`}
+							isActive={isActiveLine}
+							style={styles.singingInstructions}
+							activeStyle={styles.activeSingingInstructions}
+						>
+							{segment}
+						</HighlightedText>
+					];
+				}
+
+				return segment
+					.split(/(\s+)/)
+					.filter(token => token.length > 0)
+					.map((token, tokenIndex) => {
+						if (WHITESPACE_SEGMENT_REGEX.test(token)) {
+							return <Text key={`${lineKey}-space-${segmentIndex}-${tokenIndex}`}>{token}</Text>;
+						}
+
+						const currentWordIndex = wordCursor;
+						wordCursor += 1;
+						const isWordActive = isActiveLine && activeWordIndex === currentWordIndex;
+						const isLineFallbackActive = isActiveLine && activeWordIndex === null;
+
+						return (
+							<HighlightedText
+								key={`${lineKey}-word-${segmentIndex}-${tokenIndex}`}
+								isActive={isWordActive || isLineFallbackActive}
+								style={styles.verseText}
+								activeStyle={isWordActive ? styles.activeWordText : styles.activeVerseText}
+							>
+								{token}
+							</HighlightedText>
+						);
+					});
 			});
+	};
 
 	const renderLine = (line: string, lineKey: string) => {
 		const verseNumberMatch = line.match(VERSE_NUMBER_REGEX);
 		const verseNumber = verseNumberMatch?.[1];
 		const verseBody = verseNumberMatch ? verseNumberMatch[2] : line;
-		const content = verseNumber ? ` ${verseBody}` : verseBody;
+		const content = verseBody;
 		const isActiveLine = activeLineKey === lineKey;
+		const activeWordIndex = getActiveWordIndexForLine(lineKey, content, isActiveLine);
 
 		return (
 			<View
@@ -370,7 +449,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 							{verseNumber}.
 						</HighlightedText>
 					) : null}
-					{renderPatternAwareText(content, lineKey, isActiveLine)}
+					{verseNumber && content.length > 0 ? ' ' : null}
+					{renderPatternAwareText(content, lineKey, isActiveLine, activeWordIndex)}
 				</Text>
 			</View>
 		);
@@ -765,6 +845,11 @@ const styles = StyleSheet.create({
 	activeVerseText: {
 		color: '#5f2539',
 		fontWeight: '700',
+	},
+	activeWordText: {
+		color: '#4b1b2b',
+		fontWeight: '800',
+		backgroundColor: '#f6cada',
 	},
 	verseNumber: {
 		fontSize: 17,
