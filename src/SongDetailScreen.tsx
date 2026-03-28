@@ -32,6 +32,7 @@ const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
 const VERSE_NUMBER_REGEX = /^(\d+)\.\s*(.*)$/;
 const WHITESPACE_SEGMENT_REGEX = /^\s+$/;
 const SHOW_MELODY_PLAYBACK = true;
+const LYRIC_SYNC_LEAD_MS = 1600;
 
 const tokenizeLyricWords = (text: string): string[] =>
 	text
@@ -98,13 +99,17 @@ const SongDetailScreen = ({ route, navigation }) => {
 		[melodyMetadata?.melody_url]
 	);
 	const hasMelodySource = Boolean(localAsset || melodySourceUri);
+	const lyricSyncPositionMs = useMemo(
+		() => Math.max(0, playbackPositionMs + LYRIC_SYNC_LEAD_MS),
+		[playbackPositionMs]
+	);
 	const activeLineKey = useMemo(
-		() => (SHOW_MELODY_PLAYBACK ? getActiveTimedLineKey(song_id, playbackPositionMs) : null),
-		[song_id, playbackPositionMs]
+		() => (SHOW_MELODY_PLAYBACK ? getActiveTimedLineKey(song_id, lyricSyncPositionMs) : null),
+		[song_id, lyricSyncPositionMs]
 	);
 	const activeTimedLine = useMemo(
-		() => (SHOW_MELODY_PLAYBACK ? getActiveTimedLine(song_id, playbackPositionMs) : null),
-		[song_id, playbackPositionMs]
+		() => (SHOW_MELODY_PLAYBACK ? getActiveTimedLine(song_id, lyricSyncPositionMs) : null),
+		[song_id, lyricSyncPositionMs]
 	);
 	const fallbackDurationMs = useMemo(
 		() => melodyMetadata?.timed_lines[melodyMetadata.timed_lines.length - 1]?.end_ms || 0,
@@ -364,7 +369,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 		const lineDurationMs = Math.max(1, activeTimedLine.end_ms - activeTimedLine.start_ms);
 		const relativeProgress = Math.max(
 			0,
-			Math.min(0.9999, (playbackPositionMs - activeTimedLine.start_ms) / lineDurationMs)
+			Math.min(0.9999, (lyricSyncPositionMs - activeTimedLine.start_ms) / lineDurationMs)
 		);
 
 		return Math.min(words.length - 1, Math.floor(relativeProgress * words.length));
