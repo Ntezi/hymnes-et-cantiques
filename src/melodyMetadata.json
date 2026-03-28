@@ -1,0 +1,30 @@
+{
+  "hymnes-rw:1": {
+    "song_id": "hymnes-rw:1",
+    "melody_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "source_label": "Sample melody stream (SoundHelix)",
+    "source_url": "https://www.soundhelix.com/audio-examples",
+    "french_ref": 1,
+    "has_timing": true,
+    "timed_lines": [
+      { "line_key": "0-0", "start_ms": 0, "end_ms": 3600 },
+      { "line_key": "0-1", "start_ms": 3600, "end_ms": 7200 },
+      { "line_key": "0-2", "start_ms": 7200, "end_ms": 10800 },
+      { "line_key": "0-3", "start_ms": 10800, "end_ms": 14400 },
+      { "line_key": "0-4", "start_ms": 14400, "end_ms": 18000 },
+      { "line_key": "0-5", "start_ms": 18000, "end_ms": 21600 },
+      { "line_key": "0-6", "start_ms": 21600, "end_ms": 25800 },
+      { "line_key": "0-7", "start_ms": 25800, "end_ms": 29400 },
+      { "line_key": "0-8", "start_ms": 29400, "end_ms": 32400 },
+      { "line_key": "1-0", "start_ms": 32400, "end_ms": 36000 },
+      { "line_key": "1-1", "start_ms": 36000, "end_ms": 39600 },
+      { "line_key": "1-2", "start_ms": 39600, "end_ms": 43200 },
+      { "line_key": "1-3", "start_ms": 43200, "end_ms": 46800 },
+      { "line_key": "1-4", "start_ms": 46800, "end_ms": 50400 },
+      { "line_key": "1-5", "start_ms": 50400, "end_ms": 54000 },
+      { "line_key": "1-6", "start_ms": 54000, "end_ms": 58200 },
+      { "line_key": "1-7", "start_ms": 58200, "end_ms": 61800 },
+      { "line_key": "1-8", "start_ms": 61800, "end_ms": 64800 }
+    ]
+  }
+}

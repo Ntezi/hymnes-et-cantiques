@@ -8,6 +8,7 @@ import {
 	View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useTranslation } from 'react-i18next';
 import {
 	deleteFavoriteCategory,
 	FavoriteCategory,
@@ -27,6 +28,7 @@ const ManageCategorySheet = ({
 	onClose,
 	onUpdated,
 }: ManageCategorySheetProps) => {
+	const { t } = useTranslation();
 	const [mode, setMode] = useState<'actions' | 'rename' | 'delete'>('actions');
 	const [renameValue, setRenameValue] = useState('');
 
@@ -72,7 +74,7 @@ const ManageCategorySheet = ({
 				<TouchableOpacity style={styles.backdropTapArea} activeOpacity={1} onPress={onClose} />
 				<View style={styles.sheet}>
 					<View style={styles.headerRow}>
-						<Text style={styles.sheetTitle}>Manage Category</Text>
+						<Text style={styles.sheetTitle}>{t('manageCategory.title')}</Text>
 						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
 							<Icon name="close" size={20} color="#666666" />
 						</TouchableOpacity>
@@ -80,33 +82,37 @@ const ManageCategorySheet = ({
 
 					{mode === 'delete' ? (
 						<View style={styles.dangerCard}>
-							<Text style={styles.dangerTitle}>Delete "{category.name}"?</Text>
+							<Text style={styles.dangerTitle}>
+								{t('manageCategory.deletePrompt', { name: category.name })}
+							</Text>
 							<Text style={styles.dangerText}>
-								This removes the category and its {category.songIds.length}{' '}
-								{category.songIds.length === 1 ? 'song' : 'songs'} from this group.
+								{t('manageCategory.deleteBody', {
+									count: category.songIds.length,
+									songLabel: t('common.song', { count: category.songIds.length }),
+								})}
 							</Text>
 							<View style={styles.inlineActionsRow}>
 								<TouchableOpacity
 									style={[styles.inlineActionButton, styles.deleteButton]}
 									onPress={handleDelete}
 								>
-									<Text style={styles.deleteButtonText}>Delete</Text>
+									<Text style={styles.deleteButtonText}>{t('common.delete')}</Text>
 								</TouchableOpacity>
 								<TouchableOpacity
 									style={[styles.inlineActionButton, styles.cancelButton]}
 									onPress={() => setMode('actions')}
 								>
-									<Text style={styles.cancelButtonText}>Cancel</Text>
+									<Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
 								</TouchableOpacity>
 							</View>
 						</View>
 					) : mode === 'rename' ? (
 						<View style={styles.renameCard}>
-							<Text style={styles.fieldLabel}>Category name</Text>
+							<Text style={styles.fieldLabel}>{t('manageCategory.fieldLabel')}</Text>
 							<TextInput
 								value={renameValue}
 								onChangeText={setRenameValue}
-								placeholder="Category name"
+								placeholder={t('manageCategory.fieldPlaceholder')}
 								placeholderTextColor="#999999"
 								style={styles.renameInput}
 							/>
@@ -116,13 +122,13 @@ const ManageCategorySheet = ({
 									onPress={handleRename}
 									disabled={renameValue.trim().length === 0}
 								>
-									<Text style={styles.saveButtonText}>Save</Text>
+									<Text style={styles.saveButtonText}>{t('common.save')}</Text>
 								</TouchableOpacity>
 								<TouchableOpacity
 									style={[styles.inlineActionButton, styles.cancelButton]}
 									onPress={() => setMode('actions')}
 								>
-									<Text style={styles.cancelButtonText}>Cancel</Text>
+									<Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
 								</TouchableOpacity>
 							</View>
 						</View>
@@ -136,8 +142,8 @@ const ManageCategorySheet = ({
 									<Icon name="pencil-outline" size={18} color="#6d3549" />
 								</View>
 								<View style={styles.actionTextWrap}>
-									<Text style={styles.actionTitle}>Rename Category</Text>
-									<Text style={styles.actionSubtitle}>Change the category title</Text>
+									<Text style={styles.actionTitle}>{t('manageCategory.renameTitle')}</Text>
+									<Text style={styles.actionSubtitle}>{t('manageCategory.renameSubtitle')}</Text>
 								</View>
 							</TouchableOpacity>
 
@@ -149,8 +155,8 @@ const ManageCategorySheet = ({
 									<Icon name="trash-outline" size={18} color="#b42318" />
 								</View>
 								<View style={styles.actionTextWrap}>
-									<Text style={styles.deleteActionTitle}>Delete Category</Text>
-									<Text style={styles.actionSubtitle}>Remove this category and its songs</Text>
+									<Text style={styles.deleteActionTitle}>{t('manageCategory.deleteTitle')}</Text>
+									<Text style={styles.actionSubtitle}>{t('manageCategory.deleteSubtitle')}</Text>
 								</View>
 							</TouchableOpacity>
 						</View>

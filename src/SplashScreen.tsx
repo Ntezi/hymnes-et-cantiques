@@ -1,22 +1,27 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useTranslation } from 'react-i18next';
 
-const SplashScreen = () => (
-    <View style={styles.container}>
-        <View style={styles.topContainer}>
-            <View style={styles.iconCard}>
-                <Icon name="book-outline" size={42} color="#ffffff" />
-            </View>
-            <Text style={styles.title}>Hymnes et Cantiques</Text>
-            <Text style={styles.subtitle}>Kinyarwanda</Text>
-            <Text style={styles.verse}>1 Corinthiens 14:15</Text>
-        </View>
-        <View style={styles.bottomContainer}>
-            <Text style={styles.credits}>Developed by Marius Ngaboyamahina</Text>
-        </View>
-    </View>
-);
+const SplashScreen = () => {
+	const { t } = useTranslation();
+
+	return (
+		<View style={styles.container}>
+			<View style={styles.topContainer}>
+				<View style={styles.iconCard}>
+					<Icon name="book-outline" size={42} color="#ffffff" />
+				</View>
+				<Text style={styles.title}>{t('splash.title')}</Text>
+				<Text style={styles.subtitle}>{t('splash.subtitle')}</Text>
+				<Text style={styles.verse}>{t('splash.verse')}</Text>
+			</View>
+			<View style={styles.bottomContainer}>
+				<Text style={styles.credits}>{t('splash.credits')}</Text>
+			</View>
+		</View>
+	);
+};
 
 const styles = StyleSheet.create({
     container: {

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { AppSong } from './library';
+import { useTranslation } from 'react-i18next';
 
 interface SameMelodySheetProps {
 	visible: boolean;
@@ -28,8 +29,15 @@ const SameMelodySheet = ({
 	onClose,
 	onSave,
 }: SameMelodySheetProps) => {
+	const { t } = useTranslation();
 	const [search, setSearch] = useState('');
 	const [draftSelection, setDraftSelection] = useState<string[]>([]);
+	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+			return t(`languages.${languageCode}`);
+		}
+		return fallbackLabel;
+	};
 
 	useEffect(() => {
 		if (!visible) {
@@ -78,7 +86,7 @@ const SameMelodySheet = ({
 				<View style={styles.songRowMeta}>
 					<Text style={styles.songTitle} numberOfLines={1}>{item.song_number}. {item.title}</Text>
 					<Text style={styles.songSubtitle} numberOfLines={1}>
-						{item.collection_name} • {item.language_label}
+						{item.collection_name} • {resolveLanguageLabel(item.language_code, item.language_label)}
 					</Text>
 				</View>
 			</TouchableOpacity>
@@ -96,20 +104,23 @@ const SameMelodySheet = ({
 				<TouchableOpacity style={styles.backdropTapArea} activeOpacity={1} onPress={onClose} />
 				<View style={styles.sheet}>
 					<View style={styles.headerRow}>
-						<Text style={styles.sheetTitle}>Same Melody</Text>
+						<Text style={styles.sheetTitle}>{t('sameMelody.title')}</Text>
 						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
 							<Icon name="close" size={20} color="#666666" />
 						</TouchableOpacity>
 					</View>
 
 					<Text style={styles.currentSongText} numberOfLines={2}>
-						Current: {currentSong.song_number}. {currentSong.title}
+						{t('sameMelody.current', {
+							number: currentSong.song_number,
+							title: currentSong.title,
+						})}
 					</Text>
 
 					<View style={styles.searchWrap}>
 						<Icon name="search-outline" size={17} color="#999999" style={styles.searchIcon} />
 						<TextInput
-							placeholder="Search songs by number or title..."
+							placeholder={t('sameMelody.searchPlaceholder')}
 							placeholderTextColor="#999999"
 							value={search}
 							onChangeText={setSearch}
@@ -123,18 +134,18 @@ const SameMelodySheet = ({
 						keyExtractor={(item) => item.song_id}
 						style={styles.list}
 						contentContainerStyle={styles.listContent}
-						ListEmptyComponent={<Text style={styles.emptyText}>No songs found.</Text>}
+						ListEmptyComponent={<Text style={styles.emptyText}>{t('sameMelody.noSongsFound')}</Text>}
 					/>
 
 					<View style={styles.footerActions}>
 						<TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={onClose}>
-							<Text style={styles.cancelButtonText}>Cancel</Text>
+							<Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
 						</TouchableOpacity>
 						<TouchableOpacity
 							style={[styles.actionButton, styles.saveButton]}
 							onPress={() => onSave(draftSelection)}
 						>
-							<Text style={styles.saveButtonText}>Save</Text>
+							<Text style={styles.saveButtonText}>{t('common.save')}</Text>
 						</TouchableOpacity>
 					</View>
 				</View>

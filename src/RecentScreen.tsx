@@ -8,25 +8,27 @@ import {
 } from 'react-native';
 import SafeAreaView from 'react-native-safe-area-view';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useTranslation } from 'react-i18next';
 
 import { AppSong, getAllSongs, getCollectionById } from './library';
 import { loadFavoriteSongIds } from './favorites';
 import { loadRecentSongIds } from './recentSongs';
 
 const RecentScreen = ({ navigation }) => {
+	const { t } = useTranslation();
 	const allSongs = useMemo(() => getAllSongs(), []);
 	const [favoriteSongIds, setFavoriteSongIds] = useState<string[]>([]);
 	const [recentSongIds, setRecentSongIds] = useState<string[]>([]);
 
 	useEffect(() => {
 		navigation.setOptions({
-			headerTitle: 'Recent',
+			headerTitle: t('recent.title'),
 			headerTitleStyle: {
 				fontSize: 18,
 				fontWeight: '600',
 			},
 		});
-	}, [navigation]);
+	}, [navigation, t]);
 
 	useEffect(() => {
 		const loadData = async () => {
@@ -50,6 +52,12 @@ const RecentScreen = ({ navigation }) => {
 				.filter((song): song is AppSong => Boolean(song)),
 		[recentSongIds, allSongs]
 	);
+	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+			return t(`languages.${languageCode}`);
+		}
+		return fallbackLabel;
+	};
 
 	const isFavorite = (songId: string) => favoriteSongIds.includes(songId);
 
@@ -76,7 +84,7 @@ const RecentScreen = ({ navigation }) => {
 				<View style={styles.songMeta}>
 					<Text style={styles.songTitle} numberOfLines={1}>{item.title}</Text>
 					<Text style={styles.songSubtitle} numberOfLines={1}>
-						{item.collection_name} • {item.language_label}
+						{item.collection_name} • {resolveLanguageLabel(item.language_code, item.language_label)}
 					</Text>
 				</View>
 			</View>
@@ -99,8 +107,8 @@ const RecentScreen = ({ navigation }) => {
 				ListEmptyComponent={
 					<View style={styles.emptyWrap}>
 						<Icon name="time-outline" size={34} color="#c28c9b" />
-						<Text style={styles.emptyTitle}>No recent songs yet</Text>
-						<Text style={styles.emptyText}>Open a song to see it here.</Text>
+						<Text style={styles.emptyTitle}>{t('recent.emptyTitle')}</Text>
+						<Text style={styles.emptyText}>{t('recent.emptyText')}</Text>
 					</View>
 				}
 			/>

@@ -12,9 +12,17 @@ import CollectionsScreen from './src/CollectionsScreen';
 import { useKeepAwake } from 'expo-keep-awake';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { AppStateProvider } from './src/appState';
+import { useTranslation } from 'react-i18next';
+import './src/i18n';
 
 const RootStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+const TAB_ROUTES = {
+	HOME: 'HomeTab',
+	RECENT: 'RecentTab',
+	FAVORITES: 'FavoritesTab',
+	LIBRARY: 'LibraryTab',
+} as const;
 
 const stackScreenOptions = {
 	headerStyle: {
@@ -31,69 +39,73 @@ const stackScreenOptions = {
 	},
 };
 
-const MainTabsNavigator = () => (
-	<Tab.Navigator
-		screenOptions={({ route }) => ({
-			...stackScreenOptions,
-			tabBarActiveTintColor: '#6d3549',
-			tabBarInactiveTintColor: '#999999',
-			tabBarStyle: {
-				backgroundColor: '#ffffff',
-				borderTopColor: '#e6e6e6',
-				borderTopWidth: 1,
-				height: 64,
-				paddingTop: 6,
-				paddingBottom: 6,
-			},
-			tabBarLabelStyle: {
-				fontSize: 11,
-				fontWeight: '600',
-				marginBottom: 2,
-			},
-			tabBarIcon: ({ color, size, focused }) => {
-				let iconName = 'ellipse-outline';
-				if (route.name === 'Home') {
-					iconName = focused ? 'home' : 'home-outline';
-				} else if (route.name === 'Recent') {
-					iconName = focused ? 'time' : 'time-outline';
-				} else if (route.name === 'Favorites') {
-					iconName = focused ? 'heart' : 'heart-outline';
-				} else if (route.name === 'Library') {
-					iconName = focused ? 'book' : 'book-outline';
-				}
+const MainTabsNavigator = () => {
+	const { t } = useTranslation();
 
-				return (
-					<Icon
-						name={iconName}
-						size={size}
-						color={color}
-					/>
-				);
-			},
-		})}
-	>
-		<Tab.Screen
-			name="Home"
-			component={SongListScreen}
-			options={{ title: 'Home' }}
-		/>
-		<Tab.Screen
-			name="Recent"
-			component={RecentScreen}
-			options={{ title: 'Recent' }}
-		/>
-		<Tab.Screen
-			name="Favorites"
-			component={FavoriteSongsScreen}
-			options={{ title: 'Favorites' }}
-		/>
-		<Tab.Screen
-			name="Library"
-			component={CollectionsScreen}
-			options={{ title: 'Library' }}
-		/>
-	</Tab.Navigator>
-);
+	return (
+		<Tab.Navigator
+			screenOptions={({ route }) => ({
+				...stackScreenOptions,
+				tabBarActiveTintColor: '#6d3549',
+				tabBarInactiveTintColor: '#999999',
+				tabBarStyle: {
+					backgroundColor: '#ffffff',
+					borderTopColor: '#e6e6e6',
+					borderTopWidth: 1,
+					height: 64,
+					paddingTop: 6,
+					paddingBottom: 6,
+				},
+				tabBarLabelStyle: {
+					fontSize: 11,
+					fontWeight: '600',
+					marginBottom: 2,
+				},
+				tabBarIcon: ({ color, size, focused }) => {
+					let iconName = 'ellipse-outline';
+					if (route.name === TAB_ROUTES.HOME) {
+						iconName = focused ? 'home' : 'home-outline';
+					} else if (route.name === TAB_ROUTES.RECENT) {
+						iconName = focused ? 'time' : 'time-outline';
+					} else if (route.name === TAB_ROUTES.FAVORITES) {
+						iconName = focused ? 'heart' : 'heart-outline';
+					} else if (route.name === TAB_ROUTES.LIBRARY) {
+						iconName = focused ? 'book' : 'book-outline';
+					}
+
+					return (
+						<Icon
+							name={iconName}
+							size={size}
+							color={color}
+						/>
+					);
+				},
+			})}
+		>
+			<Tab.Screen
+				name={TAB_ROUTES.HOME}
+				component={SongListScreen}
+				options={{ title: t('tabs.home') }}
+			/>
+			<Tab.Screen
+				name={TAB_ROUTES.RECENT}
+				component={RecentScreen}
+				options={{ title: t('tabs.recent') }}
+			/>
+			<Tab.Screen
+				name={TAB_ROUTES.FAVORITES}
+				component={FavoriteSongsScreen}
+				options={{ title: t('tabs.favorites') }}
+			/>
+			<Tab.Screen
+				name={TAB_ROUTES.LIBRARY}
+				component={CollectionsScreen}
+				options={{ title: t('tabs.library') }}
+			/>
+		</Tab.Navigator>
+	);
+};
 
 export default function App() {
 	useKeepAwake();

@@ -1,4 +1,6 @@
-import SongData from './songs.json';
+import songsRwData from './songs.json';
+import songsFrData from './songs_fr.json';
+import songsEnData from './songs_en.json';
 
 export type SongTypeId = 'hymn' | 'praise' | 'worship' | 'chorus' | 'other';
 export type LanguageCode = 'rw' | 'ee' | 'en' | 'fr' | 'multi';
@@ -46,17 +48,51 @@ export const ENABLE_COLLECTION_FILTERS = false;
 
 const buildSongId = (collectionId: string, songNumber: number) => `${collectionId}:${songNumber}`;
 
-const hymnesRwSongs: AppSong[] = (SongData as BaseSong[]).map((song) => ({
+const buildCollectionSongs = (
+	songs: BaseSong[],
+	collectionId: string,
+	collectionName: string,
+	libraryName: string,
+	languageCode: LanguageCode,
+	languageLabel: string
+): AppSong[] => songs.map((song) => ({
 	...song,
-	song_id: buildSongId('hymnes-rw', song.song_number),
-	collection_id: 'hymnes-rw',
-	collection_name: 'Hymnes et Cantiques',
-	library_name: 'Hymnes et Cantiques',
-	language_code: 'rw',
-	language_label: 'Kinyarwanda',
+	song_id: buildSongId(collectionId, song.song_number),
+	collection_id: collectionId,
+	collection_name: collectionName,
+	library_name: libraryName,
+	language_code: languageCode,
+	language_label: languageLabel,
 	song_type_id: 'hymn',
 	song_type_label: SONG_TYPE_LABELS.hymn,
 }));
+
+const hymnesRwSongs: AppSong[] = buildCollectionSongs(
+	songsRwData as BaseSong[],
+	'hymnes-rw',
+	'Hymnes et Cantiques',
+	'Hymnes et Cantiques',
+	'rw',
+	'Kinyarwanda'
+);
+
+const hymnesFrSongs: AppSong[] = buildCollectionSongs(
+	songsFrData as BaseSong[],
+	'hymnes-fr',
+	'Hymnes et Cantiques',
+	'Hymnes et Cantiques',
+	'fr',
+	'French'
+);
+
+const hymnesEnSongs: AppSong[] = buildCollectionSongs(
+	songsEnData as BaseSong[],
+	'hymnes-en',
+	'Hymns for the Little Flock',
+	'Hymns for the Little Flock',
+	'en',
+	'English'
+);
 
 export const COLLECTION_CATALOG: CollectionItem[] = [
 	{
@@ -70,24 +106,24 @@ export const COLLECTION_CATALOG: CollectionItem[] = [
 		songs: hymnesRwSongs,
 	},
 	{
-		id: 'hymnes-ewe',
-		name: 'Hymnes et Cantiques (EWE)',
+		id: 'hymnes-fr',
+		name: 'Hymnes et Cantiques (FR 1991)',
 		library_name: 'Hymnes et Cantiques',
-		description: 'Ewe collection (ready for content)',
-		language_code: 'ee',
-		language_label: 'Ewe',
+		description: 'French edition 1991',
+		language_code: 'fr',
+		language_label: 'French',
 		song_types: ['hymn'],
-		songs: [],
+		songs: hymnesFrSongs,
 	},
 	{
-		id: 'song-library',
-		name: 'Other Song Library',
-		library_name: 'Other Song Library',
-		description: 'Additional non-Hymnes libraries',
-		language_code: 'multi',
-		language_label: 'Multi-language',
-		song_types: ['hymn', 'praise', 'worship', 'chorus', 'other'],
-		songs: [],
+		id: 'hymnes-en',
+		name: 'Little Flock (EN 1881)',
+		library_name: 'Hymns for the Little Flock',
+		description: 'English Little Flock edition',
+		language_code: 'en',
+		language_label: 'English',
+		song_types: ['hymn'],
+		songs: hymnesEnSongs,
 	},
 ];
 
@@ -101,6 +137,9 @@ export const getCollectionById = (collectionId: string): CollectionItem | undefi
 
 export const getAllSongs = (): AppSong[] =>
 	getCollections().flatMap(collection => collection.songs);
+
+export const getSongById = (songId: string): AppSong | undefined =>
+	getAllSongs().find(song => song.song_id === songId);
 
 export const getLanguageNavOptions = () =>
 	getCollections().map(collection => ({

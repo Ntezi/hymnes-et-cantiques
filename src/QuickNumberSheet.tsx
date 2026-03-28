@@ -7,6 +7,7 @@ import {
 	View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useTranslation } from 'react-i18next';
 
 interface QuickNumberSheetProps {
 	visible: boolean;
@@ -15,6 +16,7 @@ interface QuickNumberSheetProps {
 }
 
 const QuickNumberSheet = ({ visible, onClose, onSubmit }: QuickNumberSheetProps) => {
+	const { t } = useTranslation();
 	const [number, setNumber] = useState('');
 
 	useEffect(() => {
@@ -63,14 +65,14 @@ const QuickNumberSheet = ({ visible, onClose, onSubmit }: QuickNumberSheetProps)
 				<TouchableOpacity style={styles.backdropTapArea} activeOpacity={1} onPress={onClose} />
 				<View style={styles.sheet}>
 					<View style={styles.headerRow}>
-						<Text style={styles.sheetTitle}>Quick Number</Text>
+						<Text style={styles.sheetTitle}>{t('quickNumber.title')}</Text>
 						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
 							<Icon name="close" size={20} color="#666666" />
 						</TouchableOpacity>
 					</View>
 
 					<View style={styles.displayCard}>
-						<Text style={styles.displayLabel}>Song Number</Text>
+						<Text style={styles.displayLabel}>{t('quickNumber.label')}</Text>
 						<Text style={styles.displayNumber}>{number || '0'}</Text>
 					</View>
 
@@ -85,7 +87,7 @@ const QuickNumberSheet = ({ visible, onClose, onSubmit }: QuickNumberSheetProps)
 							disabled={number.length === 0}
 							onPress={onGo}
 						>
-							<Text style={styles.goButtonText}>Go</Text>
+							<Text style={styles.goButtonText}>{t('quickNumber.go')}</Text>
 						</TouchableOpacity>
 					</View>
 				</View>

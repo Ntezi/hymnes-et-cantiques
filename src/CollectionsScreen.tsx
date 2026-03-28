@@ -2,23 +2,32 @@ import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import SafeAreaView from 'react-native-safe-area-view';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useTranslation } from 'react-i18next';
 
 import { CollectionItem, getCollections } from './library';
-import { useAppState } from './appState';
+import { UiLanguageCode, useAppState } from './appState';
 
 const CollectionsScreen = ({ navigation }) => {
+	const { t } = useTranslation();
 	const collections = useMemo(() => getCollections(), []);
-	const { selectedCollectionId, setSelectedCollectionId } = useAppState();
+	const { selectedCollectionId, setSelectedCollectionId, uiLanguage, setUiLanguage } = useAppState();
+	const uiLanguageOptions: UiLanguageCode[] = ['rw', 'fr', 'en'];
+	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+			return t(`languages.${languageCode}`);
+		}
+		return fallbackLabel;
+	};
 
 	useEffect(() => {
 		navigation.setOptions({
-			headerTitle: 'Library',
+			headerTitle: t('library.title'),
 			headerTitleStyle: {
 				fontSize: 18,
 				fontWeight: '600',
 			},
 		});
-	}, [navigation]);
+	}, [navigation, t]);
 
 	const renderItem = ({ item }: { item: CollectionItem }) => {
 		const isActive = item.id === selectedCollectionId;
@@ -39,13 +48,17 @@ const CollectionsScreen = ({ navigation }) => {
 					{isActive ? (
 						<View style={styles.activeChip}>
 							<Icon name="checkmark" size={12} color="#ffffff" />
-							<Text style={styles.activeChipText}>Active</Text>
+							<Text style={styles.activeChipText}>{t('common.active')}</Text>
 						</View>
 					) : null}
 				</View>
 				<Text style={styles.collectionTitle}>{item.name}</Text>
-				<Text style={styles.collectionLanguage}>{item.language_label}</Text>
-				<Text style={styles.collectionMeta}>{item.songs.length} songs</Text>
+				<Text style={styles.collectionLanguage}>
+					{resolveLanguageLabel(item.language_code, item.language_label)}
+				</Text>
+				<Text style={styles.collectionMeta}>
+					{item.songs.length} {t('common.song', { count: item.songs.length })}
+				</Text>
 				<Text style={styles.collectionDescription}>{item.description}</Text>
 			</TouchableOpacity>
 		);
@@ -59,11 +72,39 @@ const CollectionsScreen = ({ navigation }) => {
 				keyExtractor={(item) => item.id}
 				contentContainerStyle={styles.listContent}
 				ListHeaderComponent={
-					<View style={styles.introCard}>
-						<Text style={styles.introTitle}>Collections & Languages</Text>
-						<Text style={styles.introText}>
-							Select a collection to drive Home and Search results.
-						</Text>
+					<View>
+						<View style={styles.introCard}>
+							<Text style={styles.introTitle}>{t('library.introTitle')}</Text>
+							<Text style={styles.introText}>{t('library.introText')}</Text>
+						</View>
+						<View style={styles.languageCard}>
+							<Text style={styles.languageTitle}>{t('library.uiLanguageTitle')}</Text>
+							<Text style={styles.languageHint}>{t('library.uiLanguageHint')}</Text>
+							<View style={styles.languageRow}>
+								{uiLanguageOptions.map((languageCode) => {
+									const isActive = uiLanguage === languageCode;
+									return (
+										<TouchableOpacity
+											key={languageCode}
+											style={[
+												styles.languageChip,
+												isActive && styles.languageChipActive,
+											]}
+											onPress={() => setUiLanguage(languageCode)}
+										>
+											<Text
+												style={[
+													styles.languageChipText,
+													isActive && styles.languageChipTextActive,
+												]}
+											>
+												{t(`languages.${languageCode}`)}
+											</Text>
+										</TouchableOpacity>
+									);
+								})}
+							</View>
+						</View>
 					</View>
 				}
 			/>
@@ -89,6 +130,50 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 14,
 		paddingVertical: 12,
 		marginBottom: 10,
+	},
+	languageCard: {
+		backgroundColor: '#ffffff',
+		borderWidth: 1,
+		borderColor: '#e6e6e6',
+		borderRadius: 14,
+		paddingHorizontal: 14,
+		paddingVertical: 12,
+		marginBottom: 10,
+	},
+	languageTitle: {
+		fontSize: 15,
+		fontWeight: '600',
+		color: '#1a1a1a',
+		marginBottom: 4,
+	},
+	languageHint: {
+		fontSize: 12,
+		color: '#666666',
+		marginBottom: 10,
+	},
+	languageRow: {
+		flexDirection: 'row',
+	},
+	languageChip: {
+		backgroundColor: '#ffffff',
+		borderWidth: 1,
+		borderColor: '#e6e6e6',
+		borderRadius: 999,
+		paddingVertical: 8,
+		paddingHorizontal: 12,
+		marginRight: 8,
+	},
+	languageChipActive: {
+		backgroundColor: '#6d3549',
+		borderColor: '#6d3549',
+	},
+	languageChipText: {
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#666666',
+	},
+	languageChipTextActive: {
+		color: '#ffffff',
 	},
 	introTitle: {
 		fontSize: 16,

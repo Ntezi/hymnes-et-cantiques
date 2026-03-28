@@ -16,14 +16,15 @@ import {
 	ENABLE_COLLECTION_FILTERS,
 	getCollectionById,
 	getCollections,
-	getLanguageNavOptions,
 	getSongTypeOptions,
 } from './library';
 import { loadFavoriteSongIds } from './favorites';
 import { useAppState } from './appState';
 import QuickNumberSheet from './QuickNumberSheet';
+import { useTranslation } from 'react-i18next';
 
 const SongListScreen = ({ navigation }) => {
+	const { t } = useTranslation();
 	const collections = useMemo(() => getCollections(), []);
 	const { selectedCollectionId, setSelectedCollectionId } = useAppState();
 	const [search, setSearch] = useState('');
@@ -44,13 +45,23 @@ const SongListScreen = ({ navigation }) => {
 
 	const songTypeOptions = useMemo(
 		() => [
-			{ id: 'all', label: 'All Types' },
-			...getSongTypeOptions(selectedCollectionId),
+			{ id: 'all', label: t('home.allTypes') },
+			...getSongTypeOptions(selectedCollectionId).map(option => ({
+				...option,
+				label: t(`songTypes.${option.id}`, { defaultValue: option.label }),
+			})),
 		],
-		[selectedCollectionId]
+		[selectedCollectionId, t]
 	);
 
-	const languageNavOptions = useMemo(() => getLanguageNavOptions(), [collections]);
+	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+			return t(`languages.${languageCode}`);
+		}
+		return fallbackLabel;
+	};
+	const resolveSongTypeLabel = (songTypeId: string, fallbackLabel: string) =>
+		t(`songTypes.${songTypeId}`, { defaultValue: fallbackLabel });
 
 	useEffect(() => {
 		if (!selectedCollection && collections[0]) {
@@ -60,13 +71,13 @@ const SongListScreen = ({ navigation }) => {
 
 	useEffect(() => {
 		navigation.setOptions({
-			headerTitle: selectedCollection?.library_name || 'Hymnes et Cantiques',
+			headerTitle: selectedCollection?.library_name || t('tabs.home'),
 			headerTitleStyle: {
 				fontSize: 18,
 				fontWeight: '600',
 			},
 		});
-	}, [navigation, selectedCollection]);
+	}, [navigation, selectedCollection, t]);
 
 	useEffect(() => {
 		const unsubscribe = navigation.addListener('focus', async () => {
@@ -123,7 +134,10 @@ const SongListScreen = ({ navigation }) => {
 	const onSubmitQuickNumber = (songNumber: number) => {
 		const matchedSong = collectionSongs.find(song => song.song_number === songNumber);
 		if (!matchedSong) {
-			Alert.alert('Song not found', `No song #${songNumber} in this collection.`);
+			Alert.alert(
+				t('home.songNotFoundTitle'),
+				t('home.songNotFoundText', { number: songNumber })
+			);
 			return;
 		}
 
@@ -146,7 +160,7 @@ const SongListScreen = ({ navigation }) => {
 				<View style={styles.songMeta}>
 					<Text style={styles.songTitle} numberOfLines={1}>{item.title}</Text>
 					<Text style={styles.songSubtitle} numberOfLines={1}>
-						{item.song_type_label} • {item.language_label}
+						{resolveSongTypeLabel(item.song_type_id, item.song_type_label)} • {resolveLanguageLabel(item.language_code, item.language_label)}
 					</Text>
 				</View>
 			</View>
@@ -215,20 +229,10 @@ const SongListScreen = ({ navigation }) => {
 						<ScrollView
 							horizontal
 							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.filterRow}
+							contentContainerStyle={[styles.filterRow, styles.secondFilterRow]}
 						>
 							{collections.map((collection) =>
 								renderCollectionChip(collection.id, collection.name)
-							)}
-						</ScrollView>
-
-						<ScrollView
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={[styles.filterRow, styles.secondFilterRow]}
-						>
-							{languageNavOptions.map(option =>
-								renderCollectionChip(option.collection_id, option.language_label)
 							)}
 						</ScrollView>
 
@@ -242,11 +246,11 @@ const SongListScreen = ({ navigation }) => {
 					</>
 				) : null}
 
-					<View style={styles.searchWrap}>
-						<Icon name="search-outline" size={18} color="#999999" style={styles.searchIcon} />
-						<TextInput
-							placeholder="Andika numero cg title..."
-							placeholderTextColor="#999999"
+				<View style={styles.searchWrap}>
+					<Icon name="search-outline" size={18} color="#999999" style={styles.searchIcon} />
+					<TextInput
+						placeholder={t('home.searchPlaceholder')}
+						placeholderTextColor="#999999"
 						onChangeText={setSearch}
 						value={search}
 						style={styles.searchInput}
@@ -259,18 +263,18 @@ const SongListScreen = ({ navigation }) => {
 							name={viewMode === 'list' ? 'grid-outline' : 'list-outline'}
 							size={18}
 							color="#666666"
-							/>
-						</TouchableOpacity>
-					</View>
+						/>
+					</TouchableOpacity>
+				</View>
 
-					{filteredSongs.length === 0 ? (
-						<View style={styles.emptyStateWrap}>
-							<Icon name="albums-outline" size={32} color="#c28c9b" />
-							<Text style={styles.emptyStateTitle}>No Songs in This View</Text>
+				{filteredSongs.length === 0 ? (
+					<View style={styles.emptyStateWrap}>
+						<Icon name="albums-outline" size={32} color="#c28c9b" />
+						<Text style={styles.emptyStateTitle}>{t('home.noSongsTitle')}</Text>
 						<Text style={styles.emptyStateText}>
 							{ENABLE_COLLECTION_FILTERS
-								? 'Change collection, language, or song type filters.'
-								: 'No songs found for the current search.'}
+								? t('home.noSongsFilterText')
+								: t('home.noSongsSearchText')}
 						</Text>
 					</View>
 				) : viewMode === 'list' ? (
@@ -287,28 +291,28 @@ const SongListScreen = ({ navigation }) => {
 						numColumns={5}
 						renderItem={renderGridItem}
 						keyExtractor={(item) => item.song_id}
-						contentContainerStyle={styles.gridContent}
+							contentContainerStyle={styles.gridContent}
 							columnWrapperStyle={styles.gridRow}
 						/>
-					)}
+				)}
 
-					<TouchableOpacity
-						style={styles.quickNumberFab}
-						onPress={() => setIsQuickNumberVisible(true)}
-						activeOpacity={0.85}
-					>
-						<Icon name="keypad-outline" size={22} color="#ffffff" />
-					</TouchableOpacity>
+				<TouchableOpacity
+					style={styles.quickNumberFab}
+					onPress={() => setIsQuickNumberVisible(true)}
+					activeOpacity={0.85}
+				>
+					<Icon name="keypad-outline" size={22} color="#ffffff" />
+				</TouchableOpacity>
 
-					<QuickNumberSheet
-						visible={isQuickNumberVisible}
-						onClose={() => setIsQuickNumberVisible(false)}
-						onSubmit={onSubmitQuickNumber}
-					/>
-				</View>
+				<QuickNumberSheet
+					visible={isQuickNumberVisible}
+					onClose={() => setIsQuickNumberVisible(false)}
+					onSubmit={onSubmitQuickNumber}
+				/>
+			</View>
 			</SafeAreaView>
 		);
-	}
+};
 
 const styles = StyleSheet.create({
 	container: {

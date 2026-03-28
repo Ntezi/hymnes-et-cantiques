@@ -17,6 +17,7 @@ import {
 	loadFavoriteCategories,
 	removeSongFromFavoriteCategory,
 } from './favoriteCategories';
+import { useTranslation } from 'react-i18next';
 
 interface AddToFavoriteSheetProps {
 	visible: boolean;
@@ -31,6 +32,7 @@ const AddToFavoriteSheet = ({
 	onClose,
 	onUpdated,
 }: AddToFavoriteSheetProps) => {
+	const { t } = useTranslation();
 	const [favoriteCategories, setFavoriteCategories] = useState<FavoriteCategory[]>([]);
 	const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
 	const [newCategoryName, setNewCategoryName] = useState('');
@@ -100,7 +102,7 @@ const AddToFavoriteSheet = ({
 				<TouchableOpacity style={styles.backdropTapArea} activeOpacity={1} onPress={onClose} />
 				<View style={styles.sheet}>
 					<View style={styles.headerRow}>
-						<Text style={styles.sheetTitle}>Add to Favorites</Text>
+						<Text style={styles.sheetTitle}>{t('favorites.addToFavorites')}</Text>
 						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
 							<Icon name="close" size={20} color="#666666" />
 						</TouchableOpacity>
@@ -109,7 +111,7 @@ const AddToFavoriteSheet = ({
 					{showNewCategoryForm ? (
 						<View style={styles.newCategoryCard}>
 							<TextInput
-								placeholder="Category name..."
+								placeholder={t('favorites.categoryNamePlaceholder')}
 								placeholderTextColor="#999999"
 								value={newCategoryName}
 								onChangeText={setNewCategoryName}
@@ -121,7 +123,7 @@ const AddToFavoriteSheet = ({
 									onPress={handleCreateCategory}
 									disabled={newCategoryName.trim().length === 0}
 								>
-									<Text style={styles.newCategoryCreateButtonText}>Create</Text>
+									<Text style={styles.newCategoryCreateButtonText}>{t('common.create')}</Text>
 								</TouchableOpacity>
 								<TouchableOpacity
 									style={[styles.newCategoryActionButton, styles.newCategoryCancelButton]}
@@ -130,7 +132,7 @@ const AddToFavoriteSheet = ({
 										setNewCategoryName('');
 									}}
 								>
-									<Text style={styles.newCategoryCancelButtonText}>Cancel</Text>
+									<Text style={styles.newCategoryCancelButtonText}>{t('common.cancel')}</Text>
 								</TouchableOpacity>
 							</View>
 						</View>
@@ -140,15 +142,15 @@ const AddToFavoriteSheet = ({
 							onPress={() => setShowNewCategoryForm(true)}
 						>
 							<Icon name="add" size={18} color="#6d3549" />
-							<Text style={styles.newCategoryTriggerText}>New Category</Text>
+							<Text style={styles.newCategoryTriggerText}>{t('favorites.newCategory')}</Text>
 						</TouchableOpacity>
 					)}
 
 					<ScrollView style={styles.categoriesWrap} contentContainerStyle={styles.categoriesContent}>
 						{isLoading ? (
-							<Text style={styles.emptyText}>Loading...</Text>
+							<Text style={styles.emptyText}>{t('common.loading')}</Text>
 						) : favoriteCategories.length === 0 ? (
-							<Text style={styles.emptyText}>No categories yet. Create one above.</Text>
+							<Text style={styles.emptyText}>{t('favorites.emptySheetText')}</Text>
 						) : (
 							favoriteCategories.map((category) => {
 								const isSelected = songCategories.some(item => item.id === category.id);
@@ -164,7 +166,7 @@ const AddToFavoriteSheet = ({
 										<View style={styles.categoryMeta}>
 											<Text style={styles.categoryName}>{category.name}</Text>
 											<Text style={styles.categoryCountText}>
-												{category.songIds.length} {category.songIds.length === 1 ? 'song' : 'songs'}
+												{category.songIds.length} {t('common.song', { count: category.songIds.length })}
 											</Text>
 										</View>
 										<Icon

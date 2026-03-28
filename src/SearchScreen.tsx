@@ -9,12 +9,14 @@ import {
 } from 'react-native';
 import SafeAreaView from 'react-native-safe-area-view';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useTranslation } from 'react-i18next';
 
 import { AppSong, getCollectionById } from './library';
 import { loadFavoriteSongIds } from './favorites';
 import { useAppState } from './appState';
 
 const SearchScreen = ({ navigation }) => {
+	const { t } = useTranslation();
 	const { selectedCollectionId } = useAppState();
 	const [search, setSearch] = useState('');
 	const [favoriteSongIds, setFavoriteSongIds] = useState<string[]>([]);
@@ -28,16 +30,22 @@ const SearchScreen = ({ navigation }) => {
 		() => selectedCollection?.songs || [],
 		[selectedCollection]
 	);
+	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+			return t(`languages.${languageCode}`);
+		}
+		return fallbackLabel;
+	};
 
 	useEffect(() => {
 		navigation.setOptions({
-			headerTitle: 'Search',
+			headerTitle: t('search.title'),
 			headerTitleStyle: {
 				fontSize: 18,
 				fontWeight: '600',
 			},
 		});
-	}, [navigation]);
+	}, [navigation, t]);
 
 	useEffect(() => {
 		const unsubscribe = navigation.addListener('focus', async () => {
@@ -88,7 +96,7 @@ const SearchScreen = ({ navigation }) => {
 				<View style={styles.songMeta}>
 					<Text style={styles.songTitle} numberOfLines={1}>{item.title}</Text>
 					<Text style={styles.songSubtitle} numberOfLines={1}>
-						{item.collection_name} • {item.language_label}
+						{item.collection_name} • {resolveLanguageLabel(item.language_code, item.language_label)}
 					</Text>
 				</View>
 			</View>
@@ -106,7 +114,7 @@ const SearchScreen = ({ navigation }) => {
 			<View style={styles.searchWrap}>
 				<Icon name="search-outline" size={18} color="#999999" style={styles.searchIcon} />
 				<TextInput
-					placeholder="Search by number or title..."
+					placeholder={t('search.searchPlaceholder')}
 					placeholderTextColor="#999999"
 					onChangeText={setSearch}
 					value={search}
@@ -117,18 +125,14 @@ const SearchScreen = ({ navigation }) => {
 			{search.trim().length === 0 ? (
 				<View style={styles.emptyStateWrap}>
 					<Icon name="search-outline" size={32} color="#c28c9b" />
-					<Text style={styles.emptyStateTitle}>Start typing to search</Text>
-					<Text style={styles.emptyStateText}>
-						Search songs by number, title, or subtitle.
-					</Text>
+					<Text style={styles.emptyStateTitle}>{t('search.startTypingTitle')}</Text>
+					<Text style={styles.emptyStateText}>{t('search.startTypingText')}</Text>
 				</View>
 			) : filteredSongs.length === 0 ? (
 				<View style={styles.emptyStateWrap}>
 					<Icon name="albums-outline" size={32} color="#c28c9b" />
-					<Text style={styles.emptyStateTitle}>No Results Found</Text>
-					<Text style={styles.emptyStateText}>
-						Try a different song title or number.
-					</Text>
+					<Text style={styles.emptyStateTitle}>{t('search.noResultsTitle')}</Text>
+					<Text style={styles.emptyStateText}>{t('search.noResultsText')}</Text>
 				</View>
 			) : (
 				<FlatList
@@ -138,7 +142,7 @@ const SearchScreen = ({ navigation }) => {
 					contentContainerStyle={styles.listContent}
 					ListHeaderComponent={
 						<Text style={styles.resultsText}>
-							{filteredSongs.length} result{filteredSongs.length > 1 ? 's' : ''}
+							{t('search.results', { count: filteredSongs.length })}
 						</Text>
 					}
 				/>

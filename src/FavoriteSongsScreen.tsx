@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
 	FlatList,
 	SafeAreaView,
@@ -9,6 +9,7 @@ import {
 	View,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useTranslation } from 'react-i18next';
 
 import { AppSong, getAllSongs } from './library';
 import {
@@ -19,15 +20,39 @@ import {
 import ManageCategorySheet from './ManageCategorySheet';
 
 const FavoriteSongsScreen = ({ navigation }) => {
+	const { t } = useTranslation();
 	const allSongs = useMemo(() => getAllSongs(), []);
 	const [favoriteCategories, setFavoriteCategories] = useState<FavoriteCategory[]>([]);
 	const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
 	const [newCategoryName, setNewCategoryName] = useState('');
 	const [managedCategory, setManagedCategory] = useState<FavoriteCategory | null>(null);
+	const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([]);
+	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+			return t(`languages.${languageCode}`);
+		}
+		return fallbackLabel;
+	};
+
+	useEffect(() => {
+		setExpandedCategoryIds((prevExpandedCategoryIds) =>
+			prevExpandedCategoryIds.filter((categoryId) =>
+				favoriteCategories.some((category) => category.id === categoryId)
+			)
+		);
+	}, [favoriteCategories]);
+
+	const toggleCategoryExpansion = useCallback((categoryId: string) => {
+		setExpandedCategoryIds((prevExpandedCategoryIds) =>
+			prevExpandedCategoryIds.includes(categoryId)
+				? prevExpandedCategoryIds.filter((id) => id !== categoryId)
+				: [...prevExpandedCategoryIds, categoryId]
+		);
+	}, []);
 
 	useEffect(() => {
 		navigation.setOptions({
-			title: 'Favorites',
+			title: t('favorites.title'),
 			headerTitleStyle: {
 				fontWeight: '600',
 			},
@@ -42,7 +67,7 @@ const FavoriteSongsScreen = ({ navigation }) => {
 		loadCategories();
 
 		return unsubscribe;
-	}, [navigation]);
+	}, [navigation, t]);
 
 	const handleCreateCategory = async () => {
 		const categoryName = newCategoryName.trim();
@@ -73,7 +98,7 @@ const FavoriteSongsScreen = ({ navigation }) => {
 			<View style={styles.songRowMeta}>
 				<Text style={styles.songRowTitle} numberOfLines={1}>{song.title}</Text>
 				<Text style={styles.songRowSubtitle} numberOfLines={1}>
-					{song.collection_name} • {song.language_label}
+					{song.collection_name} • {resolveLanguageLabel(song.language_code, song.language_label)}
 				</Text>
 			</View>
 			<Icon name="chevron-forward" size={16} color="#b3b3b3" />
@@ -84,6 +109,8 @@ const FavoriteSongsScreen = ({ navigation }) => {
 		const songsInCategory = item.songIds
 			.map(songId => allSongs.find(song => song.song_id === songId))
 			.filter((song): song is AppSong => Boolean(song));
+		const isExpanded = expandedCategoryIds.includes(item.id);
+		const visibleSongs = isExpanded ? songsInCategory : songsInCategory.slice(0, 3);
 
 		return (
 			<View style={styles.categoryCard}>
@@ -91,7 +118,7 @@ const FavoriteSongsScreen = ({ navigation }) => {
 					<View style={styles.categoryTitleWrap}>
 						<Text style={styles.categoryTitle} numberOfLines={1}>{item.name}</Text>
 						<Text style={styles.categoryCount}>
-							{item.songIds.length} {item.songIds.length === 1 ? 'song' : 'songs'}
+							{item.songIds.length} {t('common.song', { count: item.songIds.length })}
 						</Text>
 					</View>
 					<TouchableOpacity
@@ -104,13 +131,23 @@ const FavoriteSongsScreen = ({ navigation }) => {
 
 				{songsInCategory.length === 0 ? (
 					<View style={styles.emptySongsWrap}>
-						<Text style={styles.emptySongsText}>No songs in this category yet.</Text>
+						<Text style={styles.emptySongsText}>{t('favorites.noSongsInCategory')}</Text>
 					</View>
 				) : (
 					<View>
-						{songsInCategory.slice(0, 3).map(song => renderSongRow(song, songsInCategory))}
+						{visibleSongs.map(song => renderSongRow(song, songsInCategory))}
 						{songsInCategory.length > 3 ? (
-							<Text style={styles.moreSongsText}>+{songsInCategory.length - 3} more</Text>
+							<TouchableOpacity
+								style={styles.moreSongsButton}
+								activeOpacity={0.8}
+								onPress={() => toggleCategoryExpansion(item.id)}
+							>
+								<Text style={styles.moreSongsText}>
+									{isExpanded
+										? t('favorites.showLess')
+										: t('favorites.moreSongs', { count: songsInCategory.length - 3 })}
+								</Text>
+							</TouchableOpacity>
 						) : null}
 					</View>
 				)}
@@ -121,14 +158,14 @@ const FavoriteSongsScreen = ({ navigation }) => {
 	return (
 		<SafeAreaView style={styles.container}>
 			<View style={styles.introCard}>
-				<Text style={styles.introTitle}>Favorite Categories</Text>
-				<Text style={styles.introText}>Organize songs into reusable groups.</Text>
+				<Text style={styles.introTitle}>{t('favorites.introTitle')}</Text>
+				<Text style={styles.introText}>{t('favorites.introText')}</Text>
 			</View>
 
 			{showNewCategoryForm ? (
 				<View style={styles.newCategoryCard}>
 					<TextInput
-						placeholder="Category name..."
+						placeholder={t('favorites.categoryNamePlaceholder')}
 						placeholderTextColor="#999999"
 						value={newCategoryName}
 						onChangeText={setNewCategoryName}
@@ -140,7 +177,7 @@ const FavoriteSongsScreen = ({ navigation }) => {
 							onPress={handleCreateCategory}
 							disabled={newCategoryName.trim().length === 0}
 						>
-							<Text style={styles.newCategoryCreateButtonText}>Create</Text>
+							<Text style={styles.newCategoryCreateButtonText}>{t('common.create')}</Text>
 						</TouchableOpacity>
 						<TouchableOpacity
 							style={[styles.newCategoryActionButton, styles.newCategoryCancelButton]}
@@ -149,7 +186,7 @@ const FavoriteSongsScreen = ({ navigation }) => {
 								setNewCategoryName('');
 							}}
 						>
-							<Text style={styles.newCategoryCancelButtonText}>Cancel</Text>
+							<Text style={styles.newCategoryCancelButtonText}>{t('common.cancel')}</Text>
 						</TouchableOpacity>
 					</View>
 				</View>
@@ -159,7 +196,7 @@ const FavoriteSongsScreen = ({ navigation }) => {
 					onPress={() => setShowNewCategoryForm(true)}
 				>
 					<Icon name="add" size={18} color="#ffffff" />
-					<Text style={styles.newCategoryTriggerText}>New Category</Text>
+					<Text style={styles.newCategoryTriggerText}>{t('favorites.newCategory')}</Text>
 				</TouchableOpacity>
 			)}
 
@@ -171,8 +208,8 @@ const FavoriteSongsScreen = ({ navigation }) => {
 				ListEmptyComponent={
 					<View style={styles.emptyWrap}>
 						<Icon name="heart-outline" size={34} color="#c28c9b" />
-						<Text style={styles.emptyTitle}>No categories yet</Text>
-						<Text style={styles.emptyText}>Create a category, then add songs from Song Detail.</Text>
+						<Text style={styles.emptyTitle}>{t('favorites.emptyTitle')}</Text>
+						<Text style={styles.emptyText}>{t('favorites.emptyText')}</Text>
 					</View>
 				}
 			/>
@@ -366,11 +403,17 @@ const styles = StyleSheet.create({
 		color: '#666666',
 	},
 	moreSongsText: {
-		paddingHorizontal: 12,
-		paddingVertical: 8,
 		fontSize: 12,
-		color: '#666666',
+		color: '#6d3549',
+		fontWeight: '600',
 		textAlign: 'center',
+	},
+	moreSongsButton: {
+		borderTopWidth: 1,
+		borderTopColor: '#f5f5f5',
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		backgroundColor: '#fcf4f8',
 	},
 	emptyWrap: {
 		marginTop: 30,

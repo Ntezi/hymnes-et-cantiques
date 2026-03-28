@@ -1,94 +1,87 @@
-# Multi-Language Support Plan (French & English)
+# Multi-Language Support Plan: "Hymnes et Cantiques" (RW, FR, EN)
 
 ## 1. Goal
-Expand the **hymnes-cantiques** app to support the French and English versions of the "Hymnes et Cantiques" (HeC) collection, allowing users to switch between languages or see cross-referenced lyrics.
+Establish the **hymnes-cantiques** app as a tri-lingual platform for the "Hymnes et Cantiques" (HeC) collection, supporting the Kinyarwanda, French, and English editions. This will allow users to access their preferred language or compare translations of the same hymn.
 
 ---
 
-## 2. Collections & Sources
+## 2. Targeted Collections
 
-### 2.1. French (Hymnes et Cantiques - HeC)
-- **Standard Edition:** 1991 (containing 353 hymns).
-- **Source:** [Cantiquest.org](https://cantiquest.org/hc) or [eblc.ch](https://hc.eblc.ch/melodies.html).
+### 2.1. Kinyarwanda (Existing)
+- **Title:** "Hymnes et Cantiques" (Kinyarwanda)
+- **Status:** Already implemented (~350 hymns).
+- **ID in App:** `hymnes-rw`.
+
+### 2.2. French (New)
+- **Title:** "Hymnes et Cantiques" (Edition 1991)
+- **Hymn Count:** 353 hymns.
+- **Source:** [Cantiquest.org](https://cantiquest.org/hc).
 - **ID in App:** `hymnes-fr`.
 
-### 2.2. English (Hymns for the Little Flock / Hymns and Spiritual Songs)
-- **Standard Edition:** 1881 or 1978 "Little Flock" hymnbook.
+### 2.3. English (New)
+- **Title:** "Hymns for the Little Flock" (1881/1978 Edition)
+- **Hymn Count:** 342 hymns (plus supplementary spiritual songs).
 - **Source:** [STEM Publishing](https://www.stempublishing.com/hymns/lf/).
 - **ID in App:** `hymnes-en`.
 
 ---
 
-## 3. Data Architecture Changes
+## 3. Data Architecture
 
-### 3.1. New Data Files
-Create two new JSON files in `src/` to mirror the structure of `songs.json`:
-- `src/songs_fr.json`
-- `src/songs_en.json`
+### 3.1. Unified JSON Storage
+Each language will have its own JSON data file in `src/` following the same schema:
+- `src/songs.json` (Kinyarwanda)
+- `src/songs_fr.json` (French)
+- `src/songs_en.json` (English)
 
-### 3.2. JSON Format (Uniform for all languages)
+### 3.2. Cross-Language Mapping (`src/crossLanguageMap.json`)
+A mapping file will link hymns that share the same melody/original text across the three editions.
 ```json
-[
-  {
-    "song_number": 1,
-    "title": "Title in Uppercase",
-    "sub_title": "Tempo/Style (Optional)",
-    "verses": [
-      "1. Verse content line 1\nVerse content line 2...",
-      "2. Verse content..."
-    ]
+{
+  "hymnes-rw:1": {
+    "fr": "hymnes-fr:1",
+    "en": "hymnes-en:1"
+  },
+  "hymnes-rw:10": {
+    "fr": "hymnes-fr:10",
+    "en": "hymnes-en:301"
   }
-]
+}
 ```
-
-### 3.3. `src/library.ts` Updates
-- Import the new JSON files.
-- Add `hymnes-fr` and `hymnes-en` to the `COLLECTION_CATALOG`.
-- Map `LanguageCode` to 'fr' and 'en'.
 
 ---
 
-## 4. UI/UX Changes
+## 4. UI/UX Features for Tri-lingual Support
 
-### 4.1. Language Selection
-- **Splash Screen / Settings:** Allow users to choose their "Primary Language".
-- **Collection Browser:** Show all available collections (RW, FR, EN) in the `SearchScreen` or a new `LibraryScreen`.
+### 4.1. Global Collection Switcher
+- In the **Search** or **Settings** screen, a clear toggle/selector to switch between the Kinyarwanda, French, and English editions of the hymnbook.
 
-### 4.2. Parallel View (Optional/Future)
-- When viewing a hymn in Kinyarwanda, add a "View in French" or "View in English" button if a mapping exists (e.g., RW 1 corresponds to FR 1).
+### 4.2. In-Song Language Toggle
+- When viewing a hymn (e.g., #1 in Kinyarwanda), a floating action button or header icon will allow the user to jump directly to the French or English version of that same hymn (based on the `crossLanguageMap`).
 
-### 4.3. Navigation Logic
-- Ensure that switching collections updates the `songs` list in `SongListScreen`.
-- Persist the selected collection/language in `AsyncStorage`.
+### 4.3. Parallel View (Staged Approach)
+- **Phase 1:** Jump between languages (Navigation).
+- **Phase 2:** Split-screen view to show two languages side-by-side (Ideal for learning or bilingual services).
 
 ---
 
 ## 5. Implementation Steps
 
-### Phase 1: Data Acquisition
-1.  **Scrape/Extract French Lyrics:** Extract all 353 hymns from Cantiquest.org.
-2.  **Scrape/Extract English Lyrics:** Extract all hymns from the Little Flock (1881) collection.
-3.  **Validate JSON:** Ensure no missing verses or malformed strings.
+### Phase 1: Content Digitization
+1.  **Extract French (HeC 1991):** Parse the 353 hymns into `songs_fr.json`.
+2.  **Extract English (Little Flock 1881):** Parse the hymns into `songs_en.json`.
+3.  **Map Relationships:** Build the initial `crossLanguageMap.json` for the most common hymns.
 
 ### Phase 2: Core Integration
-1.  **Update `library.ts`**: Register the new collections.
-2.  **Update `SearchScreen`**: Ensure the collection filter (if enabled) allows selecting between RW, FR, and EN.
-3.  **Update `SongDetailScreen`**: Ensure the screen can handle the metadata from different collections.
+1.  **Update `library.ts`**: Register all three collections in the `COLLECTION_CATALOG`.
+2.  **Update State Management**: Ensure `appState.tsx` correctly persists the user's active language/collection.
 
-### Phase 3: Cross-Language Mapping
-1.  **Create `src/crossLanguageMap.json`**:
-    ```json
-    {
-      "hymnes-rw:1": {
-        "fr": "hymnes-fr:1",
-        "en": "hymnes-en:301"
-      }
-    }
-    ```
-2.  Add a "Switch Language" icon in the `SongDetailScreen` header to jump between translations of the same hymn.
+### Phase 3: Enhanced Navigation
+1.  **Header Actions**: Add the language-switching icon to the `SongDetailScreen` header.
+2.  **Search Refinement**: Allow searching across all enabled languages simultaneously or filtering by a specific one.
 
 ---
 
-## 6. Challenges & Solutions
-- **Non-1:1 Mapping:** Not all Kinyarwanda hymns have a direct English/French counterpart. We will use a mapping file to handle these exceptions.
-- **Copyright:** Both collections (1991 HeC and 1881 Little Flock) are widely used in assemblies, but we must verify the public domain status for specific translations. (The 1881 edition is public domain).
+## 6. Maintenance & Verification
+- **Audit Data**: Ensure hymn numbers and verses match the physical books for all three languages.
+- **Sync Melodies**: Link the audio melodies (from the Melody Plan) to all three languages consistently.
