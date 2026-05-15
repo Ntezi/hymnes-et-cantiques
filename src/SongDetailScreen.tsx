@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Platform, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import SafeAreaView from "react-native-safe-area-view";
 import Icon from 'react-native-vector-icons/Ionicons';
 import { AppSong, getAllSongs, getCollectionById } from './library';
@@ -13,6 +13,8 @@ import { getActiveTimedLine, getActiveTimedLineKey, getSongMelodyMetadata } from
 import { audioService } from './services/audioService';
 import LanguageSwitchSheet from './LanguageSwitchSheet';
 import { getCrossLanguageSongIds } from './crossLanguageMap';
+import SongInfoSheet from './SongInfoSheet';
+import { getSongInfoByNumber } from './songInfo';
 import {
 	FavoriteCategory,
 	getSongFavoriteCategories,
@@ -26,6 +28,12 @@ import {
 } from './melodyLinks';
 import { useTranslation } from 'react-i18next';
 import { HE_C_AUDIO } from '../audio';
+import {
+	getWebS3AudioUrl,
+	preloadWebAudioForOffline,
+	releaseWebAudioPlaybackUri,
+	resolveWebAudioPlaybackUri,
+} from './services/webAudioSource';
 
 const REPEAT_MARKER_SPLIT_REGEX = /(\((?:bis|ter|x\d+)\)|\bbis\b|\bter\b|\bx\d+\b|R:\/?)/gi;
 const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
@@ -74,6 +82,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [sameMelodySongIds, setSameMelodySongIdsState] = useState<string[]>([]);
 	const [isSameMelodySheetVisible, setIsSameMelodySheetVisible] = useState(false);
 	const [isLanguageSheetVisible, setIsLanguageSheetVisible] = useState(false);
+	const [isSongInfoVisible, setIsSongInfoVisible] = useState(false);
 	const [isMelodyControlVisible, setIsMelodyControlVisible] = useState(false);
 	const [melodyReloadKey, setMelodyReloadKey] = useState(0);
 	const [isMelodyLoading, setIsMelodyLoading] = useState(false);
@@ -97,11 +106,17 @@ const SongDetailScreen = ({ route, navigation }) => {
 		}
 		return HE_C_AUDIO[String(song_number)] ?? null;
 	}, [song_number]);
+	const webS3AudioUrl = useMemo(
+		() => getWebS3AudioUrl(song_number),
+		[song_number]
+	);
 	const melodySourceUri = useMemo(
 		() => melodyMetadata?.melody_url?.trim() || null,
 		[melodyMetadata?.melody_url]
 	);
-	const hasMelodySource = Boolean(localAsset || melodySourceUri);
+	const hasMelodySource = Boolean(
+		(Platform.OS === 'web' ? webS3AudioUrl : localAsset) || melodySourceUri
+	);
 	const shouldHighlightLyrics =
 		ENABLE_LYRIC_HIGHLIGHTING && hasPlaybackStarted && (isPlaying || playbackPositionMs > 0);
 	const lyricSyncPositionMs = useMemo(
@@ -138,6 +153,23 @@ const SongDetailScreen = ({ route, navigation }) => {
 				.map(linkedSongId => allSongs.find(song => song.song_id === linkedSongId))
 				.filter((song): song is AppSong => Boolean(song)),
 		[crossLanguageSongIds, allSongs]
+	);
+	const songInfo = useMemo(
+		() => getSongInfoByNumber(song_number),
+		[song_number]
+	);
+	const hasSongInfo = useMemo(
+		() => Boolean(
+			songInfo && (
+				songInfo.speed
+				|| songInfo.sound
+				|| songInfo.paroles_de
+				|| songInfo.musique_de
+				|| songInfo.metres
+				|| songInfo.melodie
+			)
+		),
+		[songInfo]
 	);
 	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
 		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
@@ -181,6 +213,16 @@ const SongDetailScreen = ({ route, navigation }) => {
 	}, [navigation, song_number, title, song_id, crossLanguageSongs.length]);
 
 	useEffect(() => {
+		if (Platform.OS !== 'web' || !webS3AudioUrl) {
+			return;
+		}
+
+		preloadWebAudioForOffline(webS3AudioUrl).catch((err) => {
+			console.warn(`Unable to preload web audio for song ${song_number}:`, err);
+		});
+	}, [song_number, webS3AudioUrl]);
+
+	useEffect(() => {
 		if (!SHOW_MELODY_PLAYBACK) {
 			setIsMelodyLoading(false);
 			setMelodyError(null);
@@ -193,6 +235,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 		lineOffsetMapRef.current = {};
 		lastAutoScrollLineRef.current = null;
 		setIsLanguageSheetVisible(false);
+		setIsSongInfoVisible(false);
 		setIsMelodyControlVisible(false);
 		setPlaybackPositionMs(0);
 		setPlaybackDurationMs(0);
@@ -200,6 +243,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 		setIsBuffering(false);
 		setHasPlaybackStarted(false);
 		setMelodyError(null);
+		let webPlaybackUri: string | null = null;
 
 		const loadMelody = async () => {
 			audioService.setStatusListener((status) => {
@@ -217,7 +261,19 @@ const SongDetailScreen = ({ route, navigation }) => {
 
 			setIsMelodyLoading(true);
 			try {
-				const source = localAsset ?? (melodySourceUri ? { uri: melodySourceUri } : null);
+				let source: number | { uri: string } | null = null;
+
+				if (Platform.OS === 'web' && webS3AudioUrl) {
+					webPlaybackUri = await resolveWebAudioPlaybackUri(webS3AudioUrl);
+					source = { uri: webPlaybackUri };
+				} else if (localAsset) {
+					source = localAsset;
+				}
+
+				if (!source && melodySourceUri) {
+					source = { uri: melodySourceUri };
+				}
+
 				if (!source) {
 					throw new Error('No audio source');
 				}
@@ -241,6 +297,11 @@ const SongDetailScreen = ({ route, navigation }) => {
 				if (!isDisposed) {
 					setIsMelodyLoading(false);
 				}
+
+				if (isDisposed && webPlaybackUri) {
+					releaseWebAudioPlaybackUri(webPlaybackUri);
+					webPlaybackUri = null;
+				}
 			}
 		};
 
@@ -250,8 +311,22 @@ const SongDetailScreen = ({ route, navigation }) => {
 			isDisposed = true;
 			audioService.setStatusListener(null);
 			audioService.unloadAsync();
+			if (webPlaybackUri) {
+				releaseWebAudioPlaybackUri(webPlaybackUri);
+				webPlaybackUri = null;
+			}
 		};
-	}, [song_id, song_number, collection_id, hasMelodySource, localAsset, melodySourceUri, melodyReloadKey, t]);
+	}, [
+		song_id,
+		song_number,
+		collection_id,
+		hasMelodySource,
+		localAsset,
+		melodySourceUri,
+		melodyReloadKey,
+		t,
+		webS3AudioUrl,
+	]);
 
 	useEffect(() => {
 		if (!activeLineKey || lastAutoScrollLineRef.current === activeLineKey) {
@@ -526,6 +601,22 @@ const SongDetailScreen = ({ route, navigation }) => {
 							/>
 						</TouchableOpacity>
 
+						<TouchableOpacity
+							onPress={() => setIsSongInfoVisible(true)}
+							style={[
+								styles.infoHeaderButton,
+								!hasSongInfo && styles.infoHeaderButtonDisabled,
+							]}
+							activeOpacity={0.85}
+							disabled={!hasSongInfo}
+						>
+							<Icon
+								name="information-circle-outline"
+								size={20}
+								color={hasSongInfo ? '#6d3549' : '#b3b3b3'}
+							/>
+						</TouchableOpacity>
+
 						<View style={styles.songNumberBadge}>
 							<Text style={styles.songNumberBadgeText}>{song_number}</Text>
 						</View>
@@ -582,7 +673,11 @@ const SongDetailScreen = ({ route, navigation }) => {
 						positionMs={playbackPositionMs}
 						durationMs={effectiveDurationMs}
 						errorMessage={melodyError}
-						sourceLabel={localAsset ? "Piano (Cantiquest)" : melodyMetadata?.source_label}
+						sourceLabel={
+							webS3AudioUrl
+								? 'Piano (S3 cache)'
+								: (localAsset ? 'Piano (Cantiquest)' : melodyMetadata?.source_label)
+						}
 						onTogglePlayPause={onTogglePlayPause}
 						onStop={onStopPlayback}
 						onSeek={onSeekPlayback}
@@ -684,6 +779,13 @@ const SongDetailScreen = ({ route, navigation }) => {
 				linkedSongs={crossLanguageSongs}
 				onClose={() => setIsLanguageSheetVisible(false)}
 				onSelectSong={onSelectCrossLanguageSong}
+			/>
+			<SongInfoSheet
+				visible={isSongInfoVisible}
+				songNumber={song_number}
+				songTitle={title}
+				info={songInfo}
+				onClose={() => setIsSongInfoVisible(false)}
 			/>
 			<AddToFavoriteSheet
 				visible={isFavoriteSheetVisible}
@@ -790,6 +892,23 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 	},
 	audioHeaderButtonDisabled: {
+		borderColor: '#ececec',
+		backgroundColor: '#f7f7f7',
+	},
+	infoHeaderButton: {
+		position: 'absolute',
+		bottom: 10,
+		right: 10,
+		width: 36,
+		height: 36,
+		borderRadius: 18,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	infoHeaderButtonDisabled: {
 		borderColor: '#ececec',
 		backgroundColor: '#f7f7f7',
 	},

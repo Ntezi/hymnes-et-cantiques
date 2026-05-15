@@ -1,0 +1,2441 @@
+{
+  "1": {
+    "song_number": 1,
+    "speed": 75,
+    "sound": "Avec majesté",
+    "paroles_de": "F.G. Clottu (1798-1830) adaptées par Samuel Glady",
+    "musique_de": "Philippe Nicolaï (1556-1608)",
+    "metres": "7f8f8.7f8f8 REF 664.448",
+    "melodie": "Nous t'adorons, notre Père"
+  },
+  "2": {
+    "song_number": 2,
+    "speed": 80,
+    "sound": "Avec majesté",
+    "paroles_de": "J.-F. Monnier (1749-1813) & F.-G. Clottu (1798-1830)",
+    "musique_de": "Philippe Nicolaï (1556-1608), d'après Johann S. Bach, 1731",
+    "metres": "7f8f8.7f8f8 REF 664.448",
+    "melodie": "Sleepers, Wake"
+  },
+  "3": {
+    "song_number": 3,
+    "speed": 80,
+    "sound": "Avec majesté",
+    "paroles_de": "Nicolaus-Ludwig von Zinzendorf (1700-1760)",
+    "musique_de": "Philippe Nicolaï (1556-1608) d'après Johann S. Bach, 1731",
+    "metres": "7f8f8.7f8f8 REF 664.448",
+    "melodie": "Sleepers, Wake"
+  },
+  "4": {
+    "song_number": 4,
+    "speed": 80,
+    "sound": "1. Gloire à",
+    "paroles_de": "Louis Barbey (1796-1855)",
+    "musique_de": "Samuel Webbe (1740-1816), 1792",
+    "metres": "7.(7).77f.D",
+    "melodie": "Benevento"
+  },
+  "5": {
+    "song_number": 5,
+    "speed": 80,
+    "sound": "pCalme",
+    "paroles_de": "Louis Barbey (1796-1855)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8 REF 8f8.10f10",
+    "melodie": "Agneau, victime expiatoire"
+  },
+  "6": {
+    "song_number": 6,
+    "speed": 85,
+    "sound": "Avec joie",
+    "paroles_de": "François Olivier (1795-1890)",
+    "musique_de": null,
+    "metres": "8f8.8f8.D",
+    "melodie": "Vainqueur de Satan et du monde"
+  },
+  "7": {
+    "song_number": 7,
+    "speed": 80,
+    "sound": "1. Par",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "Peter Ritter (1780-1846) Recueil de Vienne (1774)",
+    "metres": "77f.77f REF 77",
+    "melodie": "Gloire soit au Rédempteur"
+  },
+  "8": {
+    "song_number": 8,
+    "speed": 80,
+    "sound": "Avec majesté",
+    "paroles_de": "Henri-Louis Empeytaz (1790-1853) et François Olivier (1795-1890)",
+    "musique_de": "Peter Ritter (1780-1846) tirées du Recueil de Vienne (1774)",
+    "metres": "77f.77f REF 77.D",
+    "melodie": "Gloire soit au Rédempteur"
+  },
+  "9": {
+    "song_number": 9,
+    "speed": 90,
+    "sound": "Avec ampleur",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": null,
+    "metres": "7f7.7f7.D",
+    "melodie": "Gloire à Jésus dans l'Église"
+  },
+  "10": {
+    "song_number": 10,
+    "speed": 80,
+    "sound": "Avec ampleur",
+    "paroles_de": "Henri-Louis Empeytaz (1790-1853)",
+    "musique_de": "Ferdinand-Samuel Laur (1791-1885)",
+    "metres": "10.10.10f10f REF 44.88.(33)",
+    "melodie": "Gloire à l'Agneau"
+  },
+  "11": {
+    "song_number": 11,
+    "speed": 75,
+    "sound": "Recueilli",
+    "paroles_de": "Adrien Ladrierre (? - 1903)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "12f12.D",
+    "melodie": "Éternelle splendeur"
+  },
+  "12": {
+    "song_number": 12,
+    "speed": 75,
+    "sound": "Solennel",
+    "paroles_de": "Bénédict Pictet (1655-1724)",
+    "musique_de": "Louis Bourgeois (1510-1569)",
+    "metres": "888f.888f.(8f)",
+    "melodie": "À Celui qui nous a sauvés"
+  },
+  "13": {
+    "song_number": 13,
+    "speed": 90,
+    "sound": "Avec élan",
+    "paroles_de": "Bénédict Pictet (1655-1724)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f.12f.12.12.(6)",
+    "melodie": "Ô divine faveur"
+  },
+  "14": {
+    "song_number": 14,
+    "speed": 90,
+    "sound": "Soutenu",
+    "paroles_de": "Adrien Ladrierre (? -1903)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Splendeur de Dieu"
+  },
+  "15": {
+    "song_number": 15,
+    "speed": 70,
+    "sound": "1. Tu",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f.12.12.8f.(8f)",
+    "melodie": "Tu donnes la grâce et la gloire"
+  },
+  "16": {
+    "song_number": 16,
+    "speed": 90,
+    "sound": "Avec élan",
+    "paroles_de": "Adrien Boissier (1808-1877)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "12f12.D",
+    "melodie": "Toi, le Fils éternel"
+  },
+  "17": {
+    "song_number": 17,
+    "speed": 75,
+    "sound": "Avec majesté",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f12f(4f).12(4)",
+    "melodie": "De la Divinité plénitude ineffable"
+  },
+  "18": {
+    "song_number": 18,
+    "speed": 75,
+    "sound": "Avec ferveur",
+    "paroles_de": "Adrien Ladrierre (? -1903)",
+    "musique_de": null,
+    "metres": "8f8.8f8.D",
+    "melodie": "Fils du Très-Haut"
+  },
+  "19": {
+    "song_number": 19,
+    "speed": 75,
+    "sound": "Tranquille",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": null,
+    "metres": "8f8.8f8.D",
+    "melodie": "Fils du Très-Haut"
+  },
+  "20": {
+    "song_number": 20,
+    "speed": 75,
+    "sound": "Douxp",
+    "paroles_de": "Charles Eynard (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f.10.D",
+    "melodie": "Que l'unité de ton Église est belle"
+  },
+  "21": {
+    "song_number": 21,
+    "speed": 75,
+    "sound": "Recueilli",
+    "paroles_de": "Charles Eynard (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f12.12f8.(8)",
+    "melodie": "À nous nourrir de Toi"
+  },
+  "22": {
+    "song_number": 22,
+    "speed": 65,
+    "sound": "Recueilli",
+    "paroles_de": "Émile Guers (19ème siècle)",
+    "musique_de": "Frédéric Schilcher (1789-1860)",
+    "metres": "66.6f6f.D.66.(66)",
+    "melodie": "Gloire à l'Agneau de Dieu"
+  },
+  "23": {
+    "song_number": 23,
+    "speed": 65,
+    "sound": "Avec ampleur",
+    "paroles_de": "Émile Guers (19ème siècle - Bour de Four)",
+    "musique_de": "Frédéric Schilcher (1789-1860) tirée du recueil de Wurtemberg (1844)",
+    "metres": "6(6).6f6f.D.66.(66)",
+    "melodie": "Gloire à l'Agneau de Dieu"
+  },
+  "24": {
+    "song_number": 24,
+    "speed": 70,
+    "sound": "pCalme",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8 REF 8f8.10f10",
+    "melodie": "Agneau, victime expiatoire"
+  },
+  "25": {
+    "song_number": 25,
+    "speed": 75,
+    "sound": "pLié et soutenu",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Jean-Georges Ebeling (1637-1676)",
+    "metres": "7f7.7f7.D",
+    "melodie": null
+  },
+  "26": {
+    "song_number": 26,
+    "speed": 80,
+    "sound": "Lié",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.10.10f10.(6)",
+    "melodie": "Saints, approchons"
+  },
+  "27": {
+    "song_number": 27,
+    "speed": 60,
+    "sound": "Calme",
+    "paroles_de": "De Montet (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Devant le trône de la grâce"
+  },
+  "28": {
+    "song_number": 28,
+    "speed": 70,
+    "sound": "pRecueilli",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "88f.88f.88f.8f8",
+    "melodie": "Tes enfants, sous ton doux regard"
+  },
+  "29": {
+    "song_number": 29,
+    "speed": 90,
+    "sound": "Avec élan",
+    "paroles_de": "Bénédict Pictet (1655-1724)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f.12f.12.12.(6)",
+    "melodie": "Ô divine faveur"
+  },
+  "30": {
+    "song_number": 30,
+    "speed": 60,
+    "sound": "1. Ô",
+    "paroles_de": null,
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "7f7.7f7",
+    "melodie": "Ô Jésus, sainte Victime !"
+  },
+  "31": {
+    "song_number": 31,
+    "speed": 85,
+    "sound": "Avec ferveur",
+    "paroles_de": "Émile Guers (19ème siècle)",
+    "musique_de": null,
+    "metres": "65f.65f-REF 66-65f.65f",
+    "melodie": "Jésus, de ton amour"
+  },
+  "32": {
+    "song_number": 32,
+    "speed": 70,
+    "sound": "Avec expression",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": "Johann Crüger (1598-1662)",
+    "metres": "12f.12f.12.12",
+    "melodie": "Nun Danket"
+  },
+  "33": {
+    "song_number": 33,
+    "speed": 60,
+    "sound": "Recueilli",
+    "paroles_de": "Barthélémy Bastié",
+    "musique_de": "Recueil de Freylinghausen (1704)",
+    "metres": "8f8.8f8",
+    "melodie": "Nous te voyons en agonie"
+  },
+  "34": {
+    "song_number": 34,
+    "speed": 85,
+    "sound": "qui",
+    "paroles_de": "Adrien Boissier (1808-1877)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f12.D.(12)",
+    "melodie": "Louons d'un même cœur"
+  },
+  "35": {
+    "song_number": 35,
+    "speed": 66,
+    "sound": "pRecueilli",
+    "paroles_de": "Bénédict Pictet (1655-1724)",
+    "musique_de": "P. Dagues (16ème siècle) arrangée par Louis Bourgeois",
+    "metres": "10.10f.10f.10",
+    "melodie": "Comme un agneau"
+  },
+  "36": {
+    "song_number": 36,
+    "speed": 80,
+    "sound": "Avec ampleur",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "88f.8f8.D.8",
+    "melodie": "Ô saint et glorieux Agneau"
+  },
+  "37": {
+    "song_number": 37,
+    "speed": 80,
+    "sound": "Avec ampleur",
+    "paroles_de": "Émile Guers (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "88f.8f8.D.8",
+    "melodie": "Ô saint et glorieux Agneau"
+  },
+  "38": {
+    "song_number": 38,
+    "speed": 80,
+    "sound": "pAvec expression",
+    "paroles_de": "Chants chrétien (1846)",
+    "musique_de": "Samuel Webbe (1740-1816)",
+    "metres": "77.77f.D",
+    "melodie": "Benevento"
+  },
+  "39": {
+    "song_number": 39,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Richard-William Beaty (1794-1883)",
+    "metres": "8f4.8f4.8f8f.8f4",
+    "melodie": "Jésus est notre ami suprême"
+  },
+  "40": {
+    "song_number": 40,
+    "speed": 75,
+    "sound": "Calme et heureux",
+    "paroles_de": "Nicolas-Ludwig von Zinzendorf (1700-1760)",
+    "musique_de": "Johann-Georg Ebeling (1637-1676)",
+    "metres": "7f7.7f7.D",
+    "melodie": "Grebe"
+  },
+  "41": {
+    "song_number": 41,
+    "speed": 92,
+    "sound": "Avec ampleur",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f12.8.(8).6.(6.6).6f",
+    "melodie": "Du Rocher de Jacob"
+  },
+  "42": {
+    "song_number": 42,
+    "speed": 75,
+    "sound": "Recueilli",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "86f.86f.(6f)",
+    "melodie": "Tu nous aima jusqu'à la mort"
+  },
+  "43": {
+    "song_number": 43,
+    "speed": 50,
+    "sound": "Recueilli",
+    "paroles_de": "Henri Rossier (1835-1928) et d'Adrien Ladrierre (?-1903)",
+    "musique_de": "Daniel-François Auber (1782-1871)",
+    "metres": "8f6.8f6.88.86",
+    "melodie": "Behold the Lamb"
+  },
+  "44": {
+    "song_number": 44,
+    "speed": 120,
+    "sound": "Avec ampleur",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": null,
+    "metres": "5f5.5f5.D",
+    "melodie": "Maître débonnaire"
+  },
+  "45": {
+    "song_number": 45,
+    "speed": 75,
+    "sound": "Soutenu",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "8f8.8f8.D",
+    "melodie": "Fils du Très-Haut"
+  },
+  "46": {
+    "song_number": 46,
+    "speed": 70,
+    "sound": "Recueilli",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Johann Crüger (1598-1662)",
+    "metres": "12f.12f.12.12",
+    "melodie": "Nun Danket"
+  },
+  "47": {
+    "song_number": 47,
+    "speed": 90,
+    "sound": "Avec expression",
+    "paroles_de": "Frédéric Prod'hom Bonne Nouvelle (19ème siècle)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "12f12.D",
+    "melodie": "Toi, le Fils éternel"
+  },
+  "48": {
+    "song_number": 48,
+    "speed": 100,
+    "sound": "Avec allant",
+    "paroles_de": "Mme Guillaumet (19ème siècle)",
+    "musique_de": null,
+    "metres": "7f7.7f7 REF 7f7.7f7",
+    "melodie": "Gloire à Jésus dans l'Église"
+  },
+  "49": {
+    "song_number": 49,
+    "speed": 80,
+    "sound": "Heureux",
+    "paroles_de": "J. Risler traduites par Émile Guers (19ème siècle)",
+    "musique_de": null,
+    "metres": "7f7.7f7.D",
+    "melodie": "T'aimer, Jésus, te connaître"
+  },
+  "50": {
+    "song_number": 50,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Marianne Nunn (1778-1847), 1817 traduites par Lucie de Charrière",
+    "musique_de": "Richard-William Beaty (1794-1883)",
+    "metres": "8f4.8f4.8f8f.8f4",
+    "melodie": "Jésus est notre ami suprême"
+  },
+  "51": {
+    "song_number": 51,
+    "speed": 80,
+    "sound": "Avec majesté",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": null,
+    "metres": "5f5.5f5.D",
+    "melodie": "Gloire d'âge en âge"
+  },
+  "52": {
+    "song_number": 52,
+    "speed": 110,
+    "sound": "Avec allant",
+    "paroles_de": "François Olivier (1795-1890)",
+    "musique_de": "François Olivier (1795-1890)",
+    "metres": "10.10.8f.8f REF 13.11",
+    "melodie": "Forme nos cœurs"
+  },
+  "53": {
+    "song_number": 53,
+    "speed": 90,
+    "sound": "Tranquille",
+    "paroles_de": "L.A. Privat (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Puissant Sauveur"
+  },
+  "54": {
+    "song_number": 54,
+    "speed": 100,
+    "sound": "Avec joie",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Puissant Sauveur"
+  },
+  "55": {
+    "song_number": 55,
+    "speed": 80,
+    "sound": "Avec élan",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": null,
+    "metres": "5f5.5f5.D",
+    "melodie": "Gloire d'âge en âge"
+  },
+  "56": {
+    "song_number": 56,
+    "speed": 60,
+    "sound": "Avec ampleur",
+    "paroles_de": "Guillaume Clottu (1798-1830)",
+    "musique_de": "Samuel Glady-Recueil confession dAusbourg",
+    "metres": "8f8.8f8.(8)",
+    "melodie": "Déjà, Seigneur, tes gloires suivent"
+  },
+  "57": {
+    "song_number": 57,
+    "speed": 90,
+    "sound": "Avec ferveur",
+    "paroles_de": "Mme Guillaumet (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Splendeur de Dieu"
+  },
+  "58": {
+    "song_number": 58,
+    "speed": 75,
+    "sound": "Avec ampleur",
+    "paroles_de": "Adrien Ladrierre ( ?-1903)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "12f12.D",
+    "melodie": "Éternelle splendeur"
+  },
+  "59": {
+    "song_number": 59,
+    "speed": 75,
+    "sound": "Sans lenteur",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": null,
+    "metres": "12f12.D.(12)",
+    "melodie": "Louons d'un même cœur"
+  },
+  "60": {
+    "song_number": 60,
+    "speed": 90,
+    "sound": "Avec ferveur",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f6.D.(6)",
+    "melodie": "Salut, paix et pardon"
+  },
+  "61": {
+    "song_number": 61,
+    "speed": 80,
+    "sound": "Paisible",
+    "paroles_de": "Georges Jayet + Bourg de Four",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f6.D.(6)",
+    "melodie": "Salut, paix et pardon"
+  },
+  "62": {
+    "song_number": 62,
+    "speed": 90,
+    "sound": "pAvec allant",
+    "paroles_de": "François Olivier (1795-1890)",
+    "musique_de": "François Olivier (1795-1890)",
+    "metres": "12f10.D.(10)",
+    "melodie": "Oui, nous avons au ciel"
+  },
+  "63": {
+    "song_number": 63,
+    "speed": 80,
+    "sound": "Paisible mais sans lenteur",
+    "paroles_de": null,
+    "musique_de": "Johann Crüger (1598-1662)",
+    "metres": "12f12f.12.12",
+    "melodie": "Nun Danket"
+  },
+  "64": {
+    "song_number": 64,
+    "speed": 90,
+    "sound": "pLié et calme",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "A. Vinet (air belge)",
+    "metres": "12f12.D.(12)",
+    "melodie": "Du repos éternel"
+  },
+  "65": {
+    "song_number": 65,
+    "speed": 80,
+    "sound": "Avec joie",
+    "paroles_de": null,
+    "musique_de": "Giacomo Meyerbeer (1791-1864)",
+    "metres": "7f7.7f7",
+    "melodie": "Meyerbeer"
+  },
+  "66": {
+    "song_number": 66,
+    "speed": 80,
+    "sound": "pDoux",
+    "paroles_de": "Salomon Liscou - Chant morave",
+    "musique_de": "Melchior Teschner (1584-1635)",
+    "metres": "6f6.6f6.D",
+    "melodie": "St. Theodulph"
+  },
+  "67": {
+    "song_number": 67,
+    "speed": 65,
+    "sound": null,
+    "paroles_de": "Psalmodie morave",
+    "musique_de": "César Malan (1787-1864) inspirée d'une mélodie allemande",
+    "metres": "7f7.7f7",
+    "melodie": "Ô Jésus, sainte Victime !"
+  },
+  "68": {
+    "song_number": 68,
+    "speed": 70,
+    "sound": "Avec ferveur",
+    "paroles_de": "Mme Guillaumet et d'Émile Guers (19ème siècle)",
+    "musique_de": null,
+    "metres": "65f.65f-66-65f.65f",
+    "melodie": "Jésus, de ton amour"
+  },
+  "69": {
+    "song_number": 69,
+    "speed": 85,
+    "sound": "Soutenu et avec ferveur",
+    "paroles_de": "Émile Guers",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10.10f.10f10",
+    "melodie": "Ta grâce atteint"
+  },
+  "70": {
+    "song_number": 70,
+    "speed": 60,
+    "sound": "Avec ampleur et avec joie",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10.8f.8f10",
+    "melodie": "Vivre de toi"
+  },
+  "71": {
+    "song_number": 71,
+    "speed": 80,
+    "sound": "Douxp",
+    "paroles_de": "John-Nelson Darby (1800-1882)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Seigneur ! Ta grâce illimitée"
+  },
+  "72": {
+    "song_number": 72,
+    "speed": 60,
+    "sound": "Calme",
+    "paroles_de": "Louis Barbey (1796-1855)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Devant le trône de la grâce"
+  },
+  "73": {
+    "song_number": 73,
+    "speed": 75,
+    "sound": "1. Ô toi qui vis dans les hauts cieux, Dieu rem pli de ten dres",
+    "paroles_de": "Poète ancien inconnu",
+    "musique_de": "Mme Monsell-Wolf (19ème siècle)",
+    "metres": "86f.86f.886f",
+    "melodie": "Ô toi qui vit dans les haut cieux"
+  },
+  "74": {
+    "song_number": 74,
+    "speed": 80,
+    "sound": "Soutenu",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f12.12.12f",
+    "melodie": "Tu descendis, Seigneur"
+  },
+  "75": {
+    "song_number": 75,
+    "speed": 90,
+    "sound": "Avec joie",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f6.D.(6)",
+    "melodie": "Salut, paix et pardon"
+  },
+  "76": {
+    "song_number": 76,
+    "speed": 75,
+    "sound": "Avec joie",
+    "paroles_de": "Jérémie Favre",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "86f.86f.(6f)",
+    "melodie": "Tu nous aima jusqu'à la mort"
+  },
+  "77": {
+    "song_number": 77,
+    "speed": 80,
+    "sound": "Tranquille",
+    "paroles_de": "Nicolas-Ludwig von Zinzendorf (1700-1760)",
+    "musique_de": null,
+    "metres": "5f5.5f5.D",
+    "melodie": "Gloire d'âge en âge"
+  },
+  "78": {
+    "song_number": 78,
+    "speed": 85,
+    "sound": "Avec ampleur",
+    "paroles_de": "Henri-Louis Empeytaz",
+    "musique_de": "William Wheale (1696-1727), 1729",
+    "metres": "86.86",
+    "melodie": "Bedford"
+  },
+  "79": {
+    "song_number": 79,
+    "speed": 80,
+    "sound": "Douxp",
+    "paroles_de": "Nicolaus-Ludwig von Zinzendorf (1700-1760)",
+    "musique_de": "Melchior Teschner (1584-1635)",
+    "metres": "6f6.6f6.D",
+    "melodie": "St. Theodulph"
+  },
+  "80": {
+    "song_number": 80,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": null,
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Seigneur ! Ta grâce illimitée"
+  },
+  "81": {
+    "song_number": 81,
+    "speed": 65,
+    "sound": "C'est",
+    "paroles_de": null,
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "7f7.7f7",
+    "melodie": "Ô Jésus, sainte Victime !"
+  },
+  "82": {
+    "song_number": 82,
+    "speed": 90,
+    "sound": "Heureux",
+    "paroles_de": null,
+    "musique_de": null,
+    "metres": "55-5-5f5",
+    "melodie": "Quel autre ai-je aux cieux ?"
+  },
+  "83": {
+    "song_number": 83,
+    "speed": 95,
+    "sound": "Ferme et calme",
+    "paroles_de": null,
+    "musique_de": null,
+    "metres": "8f8.8f8",
+    "melodie": "Tes paroles, toujours ﬁdèles"
+  },
+  "84": {
+    "song_number": 84,
+    "speed": 80,
+    "sound": "Avec allant",
+    "paroles_de": "Auguste-H. Francke (1663-1727) tirées du Recueil de Strasbourg (1758)",
+    "musique_de": "Jean-Sébastien Bach (1685-1750) tirée du Recueil de J. Klug (1535)",
+    "metres": "76f.76f.88.6f",
+    "melodie": "Nun Freut Euch"
+  },
+  "85": {
+    "song_number": 85,
+    "speed": 120,
+    "sound": "Doux et lié",
+    "paroles_de": "Bourg de Four",
+    "musique_de": null,
+    "metres": "5f5.5f5.D",
+    "melodie": "Maître débonnaire"
+  },
+  "86": {
+    "song_number": 86,
+    "speed": 100,
+    "sound": "Avec allant",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Puissant Sauveur"
+  },
+  "87": {
+    "song_number": 87,
+    "speed": 100,
+    "sound": "Avec joie",
+    "paroles_de": "Jean-Henri Merle d'Aubigné (1794-1872)",
+    "musique_de": null,
+    "metres": "12f12f.12.12",
+    "melodie": "Le Seigneur est ma part"
+  },
+  "88": {
+    "song_number": 88,
+    "speed": 100,
+    "sound": "Avec allant",
+    "paroles_de": "Mme Guillaumet (19ème siècle)",
+    "musique_de": null,
+    "metres": "12f12f.12.12",
+    "melodie": "Le Seigneur est ma part"
+  },
+  "89": {
+    "song_number": 89,
+    "speed": 80,
+    "sound": "Sans lenteur",
+    "paroles_de": "Antoine Demellayer (1765-1839)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Splendeur de Dieu"
+  },
+  "90": {
+    "song_number": 90,
+    "speed": 75,
+    "sound": "Que ne",
+    "paroles_de": "Adolphe Monod (1802-1856)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "12f.12.D",
+    "melodie": "Éternelle splendeur"
+  },
+  "91": {
+    "song_number": 91,
+    "speed": 90,
+    "sound": "Avec allant",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f6.D.(6)",
+    "melodie": "Salut, paix et pardon"
+  },
+  "92": {
+    "song_number": 92,
+    "speed": 95,
+    "sound": "Avec ferveur",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "66f6.6f6f.66",
+    "melodie": "C'est en toi, Dieu Sauveur"
+  },
+  "93": {
+    "song_number": 93,
+    "speed": 90,
+    "sound": "Avec élan",
+    "paroles_de": null,
+    "musique_de": null,
+    "metres": "5f5.5f5.D",
+    "melodie": "Viens, âme perdue"
+  },
+  "94": {
+    "song_number": 94,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "R. Elliot (19ème siècle)",
+    "musique_de": "Richard-William Beaty (1794-1883)",
+    "metres": "8f4.8f4.8f8f.8f4",
+    "melodie": "Jésus est notre ami suprême"
+  },
+  "95": {
+    "song_number": 95,
+    "speed": 85,
+    "sound": "Animé",
+    "paroles_de": "Bénédict Pictet (1655-1724)",
+    "musique_de": null,
+    "metres": "10f10.D",
+    "melodie": "C'est dans les cieux qu'est Jésus"
+  },
+  "96": {
+    "song_number": 96,
+    "speed": 80,
+    "sound": "Avec ferveur",
+    "paroles_de": "Adrien Boissier (1808-1877)",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "86f.86f.(6f)",
+    "melodie": "Tu nous aima jusqu'à la mort"
+  },
+  "97": {
+    "song_number": 97,
+    "speed": 70,
+    "sound": "Avec expression",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "Mélodie anglaise",
+    "metres": "76.76.D",
+    "melodie": "Du sein de la faiblesse"
+  },
+  "98": {
+    "song_number": 98,
+    "speed": 80,
+    "sound": "Avec ampleur",
+    "paroles_de": "F.G. Clottu (1798-1830)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f12.66.12f",
+    "melodie": "Tu descendis, Seigneur"
+  },
+  "99": {
+    "song_number": 99,
+    "speed": 90,
+    "sound": "Sans lenteur",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "12f12.D",
+    "melodie": "Toi, le Fils éternel"
+  },
+  "100": {
+    "song_number": 100,
+    "speed": 50,
+    "sound": "Avec ampleur",
+    "paroles_de": "Samson Jordan traduites par L. Monastier",
+    "musique_de": "Pearsﬁeld",
+    "metres": "888.8f8f.88",
+    "melodie": "Vers Jésus élevons les yeux"
+  },
+  "101": {
+    "song_number": 101,
+    "speed": 80,
+    "sound": "Avec joie",
+    "paroles_de": "Mme Guillaumet (19ème siècle)",
+    "musique_de": "Hans-Georg Näegli (1173-1836)",
+    "metres": "5f5.5f5 REF 5f5.5f5",
+    "melodie": "Zürich"
+  },
+  "102": {
+    "song_number": 102,
+    "speed": 80,
+    "sound": "Animé",
+    "paroles_de": "Mme W. Monod (19ème siècle)",
+    "musique_de": null,
+    "metres": "10.10-10f10f-10.10",
+    "melodie": "Avançons-nous joyeux"
+  },
+  "103": {
+    "song_number": 103,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Catherine Grossmann",
+    "musique_de": "Melchior Teschner (1584-1635)",
+    "metres": "6f6.6f6.D",
+    "melodie": "St. Theodulph"
+  },
+  "104": {
+    "song_number": 104,
+    "speed": 90,
+    "sound": "Lié et soutenu",
+    "paroles_de": "Mme Mary Lemire ( ? - 1852)",
+    "musique_de": "Christian Urhan (1790-1845)",
+    "metres": "12f12f8.D",
+    "melodie": "Tu nous aimes, Seigneur"
+  },
+  "105": {
+    "song_number": 105,
+    "speed": 90,
+    "sound": "Avec allant",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f7.4f4.4f4.(4f4)",
+    "melodie": "Heureux celui qui n'aspire"
+  },
+  "106": {
+    "song_number": 106,
+    "speed": 80,
+    "sound": "pHeureux",
+    "paroles_de": "Suzanne de Chabaud-Latour",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "8f8.8f8.88",
+    "melodie": "Jamais je n'aurai de disette"
+  },
+  "107": {
+    "song_number": 107,
+    "speed": 60,
+    "sound": "Avec ferveur",
+    "paroles_de": "Louis Barbey (1796-1855)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Devant le trône de la grâce"
+  },
+  "108": {
+    "song_number": 108,
+    "speed": 80,
+    "sound": "Animé",
+    "paroles_de": "Louis Barbey (1796-1855)",
+    "musique_de": "Samuel Webbe (1740-1816)",
+    "metres": "77.77f.D",
+    "melodie": "Benevento"
+  },
+  "109": {
+    "song_number": 109,
+    "speed": 70,
+    "sound": "Lié et avec expression",
+    "paroles_de": "Louis Barbey (1796-1855)",
+    "musique_de": "Gottfried Wilhelm Fink (1783-1846)",
+    "metres": "6f6.6f6.D.(6)",
+    "melodie": "L'Église est étrangère"
+  },
+  "110": {
+    "song_number": 110,
+    "speed": 60,
+    "sound": "mfHeureux",
+    "paroles_de": "Mlle Lucie de Charrière",
+    "musique_de": null,
+    "metres": "86f.86.6f6f.86 REF 66.66.6f6f.86",
+    "melodie": "De Canaan quand verrons-nous"
+  },
+  "111": {
+    "song_number": 111,
+    "speed": 80,
+    "sound": "pPaisible",
+    "paroles_de": "Mme Guillaumet (19ème siècle)",
+    "musique_de": "Hans-Georg Näegli (1173-1836)",
+    "metres": "5f5.5f5 REF 5f5.5f5",
+    "melodie": "Zürich"
+  },
+  "112": {
+    "song_number": 112,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Ulysse Guinand (19ème siècle)",
+    "musique_de": "Hymnes & Cantiques de 1865",
+    "metres": "664.66.64",
+    "melodie": "Entre deux malfaiteurs"
+  },
+  "113": {
+    "song_number": 113,
+    "speed": 45,
+    "sound": "Paisible",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8f8",
+    "melodie": "Tandis qu'au ciel"
+  },
+  "114": {
+    "song_number": 114,
+    "speed": 75,
+    "sound": "Calme",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Jean-Georges Ebeling (1637-1676)",
+    "metres": "7f7.7f7.D",
+    "melodie": "Grebe"
+  },
+  "115": {
+    "song_number": 115,
+    "speed": 90,
+    "sound": "Avec expression",
+    "paroles_de": "Frédéric Chavannes (1803-1893)",
+    "musique_de": "Charles Czerny (1791-1857)",
+    "metres": "10f10.D",
+    "melodie": "Czerny"
+  },
+  "116": {
+    "song_number": 116,
+    "speed": 80,
+    "sound": "Avec ferveur",
+    "paroles_de": "Théodore de Bèze (1519-1605)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Puissant Sauveur"
+  },
+  "117": {
+    "song_number": 117,
+    "speed": 80,
+    "sound": "Doux",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Melchior Teschner (1584-1635)",
+    "metres": "6f6.6f6.D",
+    "melodie": "St. Theodulph"
+  },
+  "118": {
+    "song_number": 118,
+    "speed": 90,
+    "sound": "Animé et lié",
+    "paroles_de": "François Olivier (1795-1890)",
+    "musique_de": null,
+    "metres": "86f.86f.4f6.4f6.86f.86f",
+    "melodie": "Qui jamais nous condamnera"
+  },
+  "119": {
+    "song_number": 119,
+    "speed": 80,
+    "sound": "Avec élan",
+    "paroles_de": "Charles Eynard",
+    "musique_de": null,
+    "metres": "8f8.8f8",
+    "melodie": "Tes paroles, toujours ﬁdèles"
+  },
+  "120": {
+    "song_number": 120,
+    "speed": 90,
+    "sound": "Avec allant",
+    "paroles_de": "1ère et 2ème st. de François Dumon et 3ème d'Adrien Ladrierre (?-1903)",
+    "musique_de": "François Olivier (1795-1890)",
+    "metres": "12f10.D.(10)",
+    "melodie": "Oui, nous avons au ciel"
+  },
+  "121": {
+    "song_number": 121,
+    "speed": 85,
+    "sound": "Avec ferveur et allant",
+    "paroles_de": "J. Foulquier",
+    "musique_de": "Hans-Georg Näegli (1173-1836)",
+    "metres": "10f6.D.(6)",
+    "melodie": "Tu m'as aimé"
+  },
+  "122": {
+    "song_number": 122,
+    "speed": 120,
+    "sound": "Calme et lié",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": null,
+    "metres": "5f5.5f5.D",
+    "melodie": "Maître débonnaire"
+  },
+  "123": {
+    "song_number": 123,
+    "speed": 80,
+    "sound": "Paisible",
+    "paroles_de": "Mlle Suzanne de Chabaud-Latour",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f12.12f.88",
+    "melodie": "À nous nourrir de Toi"
+  },
+  "124": {
+    "song_number": 124,
+    "speed": 85,
+    "sound": "Vain",
+    "paroles_de": null,
+    "musique_de": null,
+    "metres": "8f8.8f8.D",
+    "melodie": "Vainqueur de Satan et du monde"
+  },
+  "125": {
+    "song_number": 125,
+    "speed": 80,
+    "sound": "Or, vers minuit, se ﬁt entendre",
+    "paroles_de": "Trébollier",
+    "musique_de": "Johann-Ludwig Hainlin (18ème siècle)",
+    "metres": "8f8.8f8 REF 8f8.8f8",
+    "melodie": "Or, vers minuit"
+  },
+  "126": {
+    "song_number": 126,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Str. 1,2, 6 de J.F. Guillaumet et 3 et 4 de Georges Kaufmann (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Que l'unité de ton Église est belle"
+  },
+  "127": {
+    "song_number": 127,
+    "speed": 60,
+    "sound": "Calme",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Devant le trône de la grâce"
+  },
+  "128": {
+    "song_number": 128,
+    "speed": 85,
+    "sound": "Avec expression",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "6f6.6f6.66.66",
+    "melodie": "Chantons, chantons sans cesse"
+  },
+  "129": {
+    "song_number": 129,
+    "speed": 75,
+    "sound": "Avec élan",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "86f.86f.(6f)",
+    "melodie": "Tu nous aima jusqu'à la mort"
+  },
+  "130": {
+    "song_number": 130,
+    "speed": 50,
+    "sound": "Avec ferveur",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8f8",
+    "melodie": "Tandis qu'au ciel"
+  },
+  "131": {
+    "song_number": 131,
+    "speed": 90,
+    "sound": "Sans lenteur",
+    "paroles_de": "Mme Delevay (19ème siècle)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "12f12.D",
+    "melodie": "Toi, le Fils éternel"
+  },
+  "132": {
+    "song_number": 132,
+    "speed": 50,
+    "sound": "Avec expression",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "William-Henry Monk (1823-1899)",
+    "metres": "10f10.D",
+    "melodie": "Eventide, 1861"
+  },
+  "133": {
+    "song_number": 133,
+    "speed": 80,
+    "sound": null,
+    "paroles_de": "F. Guillaume Clottu (1798-1830)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Seigneur ! Ta grâce illimitée"
+  },
+  "134": {
+    "song_number": 134,
+    "speed": 80,
+    "sound": "Tranquille",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Seigneur ! Ta grâce illimitée"
+  },
+  "135": {
+    "song_number": 135,
+    "speed": 55,
+    "sound": "Avec ampleur",
+    "paroles_de": "François Olivier (1795-1890)",
+    "musique_de": "Hymnes et cantique de 1850",
+    "metres": "10f6.5f5f5 REF 7f55",
+    "melodie": "Chantons, chantons,"
+  },
+  "136": {
+    "song_number": 136,
+    "speed": 60,
+    "sound": "Recueilli",
+    "paroles_de": null,
+    "musique_de": "Giacomo Meyereer (1791-1864)",
+    "metres": "7f7.7f7",
+    "melodie": "Meyerbeer"
+  },
+  "137": {
+    "song_number": 137,
+    "speed": 60,
+    "sound": "Calme",
+    "paroles_de": null,
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8",
+    "melodie": "Devant le trône de la grâce"
+  },
+  "138": {
+    "song_number": 138,
+    "speed": 85,
+    "sound": "Avec ampleur",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "66f.66.88.66.66f",
+    "melodie": "Du Rocher de Jacob"
+  },
+  "139": {
+    "song_number": 139,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Georges Kaufmann (19ème siècle)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "10f10.D",
+    "melodie": "Que l'unité de ton Église est belle"
+  },
+  "140": {
+    "song_number": 140,
+    "speed": 90,
+    "sound": "Avec ferveur",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "Christian Urhan (1790-1845)",
+    "metres": "12f12f8.D",
+    "melodie": "Tu nous aimes, Seigneur"
+  },
+  "141": {
+    "song_number": 141,
+    "speed": 96,
+    "sound": "Soutenu",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "8f8.8f8.8f8",
+    "melodie": "Mon cœur joyeux, plein d'espérance"
+  },
+  "142": {
+    "song_number": 142,
+    "speed": 80,
+    "sound": "Avec ferveur",
+    "paroles_de": "Mme Jean-M. de Carbon-Ferrière (1778-1858)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "8f8.8f8.D",
+    "melodie": "Fils du Très-Haut"
+  },
+  "143": {
+    "song_number": 143,
+    "speed": 85,
+    "sound": "Tranquille",
+    "paroles_de": "Henriette Lutteroth (1802-1899)",
+    "musique_de": "Hans-Georg Näegli (1173-1836)",
+    "metres": "10f6.D.(6)",
+    "melodie": "Tu m'as aimé"
+  },
+  "144": {
+    "song_number": 144,
+    "speed": 75,
+    "sound": "Avec ferveur",
+    "paroles_de": "Maurice-Jean Koechlin (20ème siècle)",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "8f8.8f8",
+    "melodie": "Nom merveilleux"
+  },
+  "145": {
+    "song_number": 145,
+    "speed": 80,
+    "sound": "Paisible mais sans lenteur",
+    "paroles_de": null,
+    "musique_de": "Johann Crüger (1598-1662)",
+    "metres": "12f12f.12.12",
+    "melodie": "Nun Danket"
+  },
+  "146": {
+    "song_number": 146,
+    "speed": 69,
+    "sound": "Tranquille et lié",
+    "paroles_de": "Adrien Ladrierre (? -1903)",
+    "musique_de": "Robert Lowry (1826-1899), 1872",
+    "metres": "6f6.6f6.D",
+    "melodie": "Need"
+  },
+  "147": {
+    "song_number": 147,
+    "speed": 60,
+    "sound": "Avec ampleur",
+    "paroles_de": "Luc Pulsford (19ème siècle)",
+    "musique_de": null,
+    "metres": "4f4f8.4f4f8",
+    "melodie": "Source féconde"
+  },
+  "148": {
+    "song_number": 148,
+    "speed": 80,
+    "sound": "Avec élan",
+    "paroles_de": null,
+    "musique_de": "Recueil de Berne (19ème siècle)",
+    "metres": "12f12f.12.12",
+    "melodie": "Le Seigneur est ma part"
+  },
+  "149": {
+    "song_number": 149,
+    "speed": 70,
+    "sound": "Avec expression",
+    "paroles_de": null,
+    "musique_de": null,
+    "metres": "6f4.6f4.6f6.6f4",
+    "melodie": "Le Seigneur nous appelle"
+  },
+  "150": {
+    "song_number": 150,
+    "speed": 80,
+    "sound": "Avec ampleur",
+    "paroles_de": "Isaac Watts (1674-1748) traduites par Charles Decoppet",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f6.D.(6)",
+    "melodie": "Salut, paix et pardon"
+  },
+  "151": {
+    "song_number": 151,
+    "speed": 90,
+    "sound": "Avec ferveur",
+    "paroles_de": "Frédéric Chavannes (1803-1893)",
+    "musique_de": "J.Michel Haydn (1732-1809)",
+    "metres": "12f12.12f12f.6.(6)",
+    "melodie": "Mon Dieu, tu m'as aimé"
+  },
+  "152": {
+    "song_number": 152,
+    "speed": 72,
+    "sound": "Tranquille et lié",
+    "paroles_de": "Mme Charles Exchaquet (1814-1889)",
+    "musique_de": "Jean-Jacques Rousseau (1712 -1778)",
+    "metres": "12f12.D",
+    "melodie": "Ta gloire, ô notre Dieu"
+  },
+  "153": {
+    "song_number": 153,
+    "speed": 90,
+    "sound": "Avec allant",
+    "paroles_de": "Henri Lutteroth (19ème siècle) adaptées par Adrien Ladrierre ( ?-1903)",
+    "musique_de": "Samuel Glady",
+    "metres": "10f10.1D.(10)",
+    "melodie": "Écoutez tous une bonne nouvelle"
+  },
+  "154": {
+    "song_number": 154,
+    "speed": 80,
+    "sound": "Avec ampleur",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Ludwig van Beethoven (1770-1827)",
+    "metres": "10.10f.10f10",
+    "melodie": "D'un même cœur"
+  },
+  "155": {
+    "song_number": 155,
+    "speed": 80,
+    "sound": "Soutenu et avec ferveur",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Georg Josephi ( ? - 1668)",
+    "metres": "10f10.D",
+    "melodie": "Fils bien-aimé"
+  },
+  "156": {
+    "song_number": 156,
+    "speed": 90,
+    "sound": "Avec expression",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Wolfang-Amadeus Mozart (1756-1791)",
+    "metres": "7f7.7f7",
+    "melodie": "Jésus est l'Ami suprême"
+  },
+  "157": {
+    "song_number": 157,
+    "speed": 90,
+    "sound": "Avec expression",
+    "paroles_de": "Louis Poget-Junot (19ème siècle)",
+    "musique_de": "Charles Czerny (1791-1857)",
+    "metres": "10f.10.D",
+    "melodie": "Czerny"
+  },
+  "158": {
+    "song_number": 158,
+    "speed": 75,
+    "sound": "Avec expression",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "8f8.8f8",
+    "melodie": "Nom merveilleux"
+  },
+  "159": {
+    "song_number": 159,
+    "speed": 85,
+    "sound": "Avec expression",
+    "paroles_de": "Auguste Rochat (19ème siècle)",
+    "musique_de": "Michel Haydn (1737-1806)",
+    "metres": "12f12.12f12f.12",
+    "melodie": "Mon Dieu, tu m'as aimé"
+  },
+  "160": {
+    "song_number": 160,
+    "speed": 60,
+    "sound": "Avec majesté",
+    "paroles_de": null,
+    "musique_de": null,
+    "metres": "88f.88f.88f.8f8",
+    "melodie": "Autour du trône du Dieu fort"
+  },
+  "161": {
+    "song_number": 161,
+    "speed": 100,
+    "sound": "Avec joie",
+    "paroles_de": "Charles-Louis Favez (19ème siècle)",
+    "musique_de": "G. Boecker (1732-1809)",
+    "metres": "8f8.8f8",
+    "melodie": "C'est ton amour qui nous rassemble"
+  },
+  "162": {
+    "song_number": 162,
+    "speed": 90,
+    "sound": "Lié",
+    "paroles_de": "Adrien Ladrierre ( ?-1903)",
+    "musique_de": "recueil de Samuel Hofer",
+    "metres": "12f12f12",
+    "melodie": "Ils sont ouverts enﬁn"
+  },
+  "163": {
+    "song_number": 163,
+    "speed": 90,
+    "sound": "Avec élan",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Franz Josef Haydn (1732-1809)",
+    "metres": "10f10.D REF 8.10",
+    "melodie": "Il vient, il vient"
+  },
+  "164": {
+    "song_number": 164,
+    "speed": 85,
+    "sound": "Avec ferveur",
+    "paroles_de": "César Malan (1787-1864)",
+    "musique_de": "Henri Annen",
+    "metres": "8f8.8f8",
+    "melodie": "Jésus, Fils bien-aimé du Père"
+  },
+  "165": {
+    "song_number": 165,
+    "speed": 85,
+    "sound": "Avec expression",
+    "paroles_de": "Charles-Louis Favez (19ème siècle)",
+    "musique_de": null,
+    "metres": "12f12.D",
+    "melodie": "À qui donc irions-nous ?"
+  },
+  "166": {
+    "song_number": 166,
+    "speed": 95,
+    "sound": "Animé",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Johann-Sebastian Bach (1685-1750)",
+    "metres": "8f6.8f6.8f6",
+    "melodie": "Des cieux pour visiter la terre"
+  },
+  "167": {
+    "song_number": 167,
+    "speed": 85,
+    "sound": "Doux",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Mme Martin-Hickel",
+    "metres": "6f6f12.D.(12)",
+    "melodie": "Ô lumière ineffable"
+  },
+  "168": {
+    "song_number": 168,
+    "speed": 80,
+    "sound": "Avec majesté",
+    "paroles_de": "Charles-Louis Favez (19ème siècle)",
+    "musique_de": "Johann Crüger (1598-1662)",
+    "metres": "77f.77f.77",
+    "melodie": "Gloire à toi, Jésus, Sauveur"
+  },
+  "169": {
+    "song_number": 169,
+    "speed": 70,
+    "sound": "Soutenu",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Henri Annen",
+    "metres": "8f8f8f.3.(3)",
+    "melodie": "Pour t'exalter, ô ﬁls du Père"
+  },
+  "170": {
+    "song_number": 170,
+    "speed": 85,
+    "sound": "Ô Jé",
+    "paroles_de": null,
+    "musique_de": null,
+    "metres": "3.(3).7.7f7.7f7.3.(3)",
+    "melodie": "Ô Jésus ! Ô Jésus !"
+  },
+  "171": {
+    "song_number": 171,
+    "speed": 100,
+    "sound": "Ô mon",
+    "paroles_de": "Pierre Corneille (1606-1684)",
+    "musique_de": "Andreas-Peter Berggieen (1801-1880)",
+    "metres": "10f10.D",
+    "melodie": "Berggreen"
+  },
+  "172": {
+    "song_number": 172,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Sophie Ladrierre",
+    "musique_de": "C.-R.Cuff",
+    "metres": "12f8.D",
+    "melodie": "Est-il possible, ô Dieu"
+  },
+  "173": {
+    "song_number": 173,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Charles-Louis Favez (19ème siècle)",
+    "musique_de": "Orlando di Lasso (1532 -1594)",
+    "metres": "7f6.7f6.7f6.(7f6)",
+    "melodie": "Seigneur, tu courbas la tête"
+  },
+  "174": {
+    "song_number": 174,
+    "speed": 90,
+    "sound": "Lié, avec joie",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Mina Koch (1845-1924)",
+    "metres": "5f5.5f5.",
+    "melodie": "Étoile splendide"
+  },
+  "175": {
+    "song_number": 175,
+    "speed": 75,
+    "sound": "Avec ampleur",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "8f8.8f8",
+    "melodie": "Le ciel a visité la terre"
+  },
+  "176": {
+    "song_number": 176,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Jacob Hintze (1622-1702)",
+    "metres": "7f7.7f7.D",
+    "melodie": "Salzburg (Hintze)"
+  },
+  "177": {
+    "song_number": 177,
+    "speed": 85,
+    "sound": "Avec ferveur",
+    "paroles_de": "Charles-Louis Favez (19ème siècle)",
+    "musique_de": "Dimitri Bortniansky (1751-1825)",
+    "metres": "5f5.5f5.D",
+    "melodie": "Russia"
+  },
+  "178": {
+    "song_number": 178,
+    "speed": 85,
+    "sound": "Avec expression",
+    "paroles_de": "André Gibert",
+    "musique_de": "Ahasverus Frifsch (1629-1701), 1679 et Johann-Sebastian Bach (1685-1750), 1740",
+    "metres": "12f12.12f12.D",
+    "melodie": "Was frag ich nach der Welt"
+  },
+  "179": {
+    "song_number": 179,
+    "speed": 95,
+    "sound": "L'œuvre",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Wolfgang-A. Mozart (1756-1791)",
+    "metres": "4f4f.44. 4f4.(4f4)",
+    "melodie": "Jésus nous aime"
+  },
+  "180": {
+    "song_number": 180,
+    "speed": 70,
+    "sound": "Avec élan",
+    "paroles_de": "Alphonse Recordon",
+    "musique_de": "Johann Crüger (1598-1662) adaptée par John Goss (1800-1880)",
+    "metres": "8f4.8f4.8f8f.8f4",
+    "melodie": "Schmücke dich, o liebe Seele"
+  },
+  "181": {
+    "song_number": 181,
+    "speed": 90,
+    "sound": "Oh !",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Frédéric Venua (1786-1872)",
+    "metres": "10.10.6f.D",
+    "melodie": "Park Street, 1810"
+  },
+  "182": {
+    "song_number": 182,
+    "speed": 60,
+    "sound": "Tranquille",
+    "paroles_de": "Louis Poget-Junot (19ème siècle)",
+    "musique_de": "Louis Bourgeois (1510-1569)",
+    "metres": "8f8.8f8",
+    "melodie": "Source de lumière et de vie"
+  },
+  "183": {
+    "song_number": 183,
+    "speed": 90,
+    "sound": "Avec ferveur",
+    "paroles_de": "Alphonse Recordon (19ème siècle)",
+    "musique_de": "Louis Bourgeois (1510-1569)",
+    "metres": "8f8.8f8.D",
+    "melodie": "Genevan Psalm CXVIII, 1541"
+  },
+  "184": {
+    "song_number": 184,
+    "speed": 50,
+    "sound": "Avec expression",
+    "paroles_de": "Clément Marot (1496-1544)",
+    "musique_de": "William-Henry Monk (1823-1899)",
+    "metres": "10f10f.10.10",
+    "melodie": "Eventide"
+  },
+  "185": {
+    "song_number": 185,
+    "speed": 85,
+    "sound": "Avec allant et ferveur",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Ludwing van Beethoven (1770-1827)",
+    "metres": "55f.5f5.55.5f5.(5f5)",
+    "melodie": "Alsace"
+  },
+  "186": {
+    "song_number": 186,
+    "speed": 90,
+    "sound": "Avec joie",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Paul-Ami Bost (1790-1874)",
+    "metres": "66f.6(6).66f.66f.6(6)",
+    "melodie": "Amour de mon Sauveur"
+  },
+  "187": {
+    "song_number": 187,
+    "speed": 85,
+    "sound": "Recueilli",
+    "paroles_de": "Adrien Ladrierre",
+    "musique_de": "Henri Plumhof (1836-1914)",
+    "metres": "12f12.12f6(6)",
+    "melodie": "Pour toujours avec toi"
+  },
+  "188": {
+    "song_number": 188,
+    "speed": 80,
+    "sound": "Avec allant",
+    "paroles_de": "Henri Magnenat (19ème siècle)",
+    "musique_de": "Ludwing van Beethoven (1770-1827)",
+    "metres": "8f8.8f8.D",
+    "melodie": "Hayes"
+  },
+  "189": {
+    "song_number": 189,
+    "speed": 100,
+    "sound": "Paisible",
+    "paroles_de": "Louis Porret-Bolens (1836-1914)",
+    "musique_de": "Friedrich-August Schulz (1810-1880)",
+    "metres": "7f7.7f7",
+    "melodie": "Quel bonheur de te connaître"
+  },
+  "190": {
+    "song_number": 190,
+    "speed": 90,
+    "sound": "Avec expression",
+    "paroles_de": "William-Joseph Lowe (1840-1927)",
+    "musique_de": "Alexander C. Ewing (1830-1895)",
+    "metres": "6f6.6f6.D",
+    "melodie": "Dans ce désert aride"
+  },
+  "191": {
+    "song_number": 191,
+    "speed": 80,
+    "sound": "Avec élan",
+    "paroles_de": "Adrien Ladrierre (? - 1903)",
+    "musique_de": "Justin Bischoff (1847-1927)",
+    "metres": "7f7.7f7",
+    "melodie": "Bientôt, Seigneur, sur ta face"
+  },
+  "192": {
+    "song_number": 192,
+    "speed": 90,
+    "sound": "Avec allant",
+    "paroles_de": "Louis Porret-Bolens (19ème siècle)",
+    "musique_de": "Ludwing van Beethoven (1770-1827)",
+    "metres": "8f8.8f8.D",
+    "melodie": "Hayes"
+  },
+  "193": {
+    "song_number": 193,
+    "speed": 85,
+    "sound": "Animé",
+    "paroles_de": "Alphonse Recordon (19ème siècle)",
+    "musique_de": "Christian Urban (1790-1845)",
+    "metres": "7f8.7f8",
+    "melodie": "De sa divine présence"
+  },
+  "194": {
+    "song_number": 194,
+    "speed": 100,
+    "sound": "Avec ampleur",
+    "paroles_de": "François Chaponière (1842-1924)",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "66f.66.8(8).6(6.6)6f",
+    "melodie": "Du Rocher de Jacob"
+  },
+  "195": {
+    "song_number": 195,
+    "speed": 85,
+    "sound": "Avec allant",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Wolfang-Amadeus Mozart (1756-1791)",
+    "metres": "66f.66.D",
+    "melodie": "À qui donc irions-nous ?"
+  },
+  "196": {
+    "song_number": 196,
+    "speed": 85,
+    "sound": "Avec ampleur",
+    "paroles_de": "Sophie Ladrierre (19ème siècle)",
+    "musique_de": "Peter La Trobe",
+    "metres": "12.12f.D",
+    "melodie": "Dans tes bras éternels"
+  },
+  "197": {
+    "song_number": 197,
+    "speed": 85,
+    "sound": "Paisible et lié",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Dimitri Bortniansky (1751-1825)",
+    "metres": "8f8.8f8.88",
+    "melodie": "Lieu de repos, sainte patrie"
+  },
+  "198": {
+    "song_number": 198,
+    "speed": 90,
+    "sound": "Animé",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Joachim Néander (1650-1680), 1680",
+    "metres": "7f7.7f7",
+    "melodie": "Unser Herrscher"
+  },
+  "199": {
+    "song_number": 199,
+    "speed": 85,
+    "sound": "Avec expression",
+    "paroles_de": "Charles-Louis Favez (19ème siècle)",
+    "musique_de": "Pierre Dagues",
+    "metres": "12.12.12f12f",
+    "melodie": "Partout avec Jésus"
+  },
+  "200": {
+    "song_number": 200,
+    "speed": 80,
+    "sound": "Avec ferveur",
+    "paroles_de": "Louis Porret-Bolens (19ème siècle)",
+    "musique_de": "Louis Bourgeois (1510-1569)",
+    "metres": "7f7.7f7.77.7f7f",
+    "melodie": "Ô Jésus mon cœur soupire"
+  },
+  "201": {
+    "song_number": 201,
+    "speed": 55,
+    "sound": "Avec élan",
+    "paroles_de": "Adrien Ladrierre (? - 1903)",
+    "musique_de": "Justin Bischoff (1847-1927)",
+    "metres": "6f6.6f6f.6(6)",
+    "melodie": "Amis, prenons courage"
+  },
+  "202": {
+    "song_number": 202,
+    "speed": 80,
+    "sound": "Paisible",
+    "paroles_de": "John-Nelson Darby (1800-1882) traduites par Adrien Ladrierre (?-1903)",
+    "musique_de": "Ludwig van Beethoven (1770-1827)",
+    "metres": "12f12.D",
+    "melodie": "Pour le cœur travaillé"
+  },
+  "203": {
+    "song_number": 203,
+    "speed": 75,
+    "sound": "Calme, avec ferveur",
+    "paroles_de": "Alphonse Recordon (19ème siècle)",
+    "musique_de": "Christian Urban (1790-1845)",
+    "metres": "12f12.D",
+    "melodie": "Pourquoi crains-tu, mon âme"
+  },
+  "204": {
+    "song_number": 204,
+    "speed": 75,
+    "sound": "Paisible",
+    "paroles_de": "Adrien Ladrierre ( ? -1903)",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "8f8.8f8",
+    "melodie": "Nom merveilleux"
+  },
+  "205": {
+    "song_number": 205,
+    "speed": 90,
+    "sound": "Avec joie",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Wolfang-Amadeus Mozart (1756-1791)",
+    "metres": "7f7.7f7",
+    "melodie": "Jésus est l'Ami suprême"
+  },
+  "206": {
+    "song_number": 206,
+    "speed": 85,
+    "sound": "Avec expression",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "H. Barbezat",
+    "metres": "12f6.D.(6)",
+    "melodie": "Te laisser seul agir"
+  },
+  "207": {
+    "song_number": 207,
+    "speed": 80,
+    "sound": "Soutenu, avec ampleur",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Mélodie hébraïque",
+    "metres": "12f12f.12.12",
+    "melodie": "Ô Sauveur, ô vrai Dieu"
+  },
+  "208": {
+    "song_number": 208,
+    "speed": 80,
+    "sound": "Sei gneur,",
+    "paroles_de": "Adrien Ladrierre (?-1903)",
+    "musique_de": "Clément Müller (1815-1898)",
+    "metres": "7f7.7f7",
+    "melodie": "Cité d'or"
+  },
+  "209": {
+    "song_number": 209,
+    "speed": 60,
+    "sound": "Tranquille, avec expresion",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "H. Barbezat",
+    "metres": "10.10f.D.10.10f.D",
+    "melodie": "Quand dans ma course"
+  },
+  "210": {
+    "song_number": 210,
+    "speed": 50,
+    "sound": "Avec ferveur",
+    "paroles_de": "François Chaponière (1842-1924)",
+    "musique_de": "William-Henry Monk (1823-1899)",
+    "metres": "10f10.D",
+    "melodie": "Eventide"
+  },
+  "211": {
+    "song_number": 211,
+    "speed": 80,
+    "sound": "Recueilli",
+    "paroles_de": "André Gibert",
+    "musique_de": "Hans-Georg Näegli (1173-1836)",
+    "metres": "10f10.10f8",
+    "melodie": "C'est accompli"
+  },
+  "212": {
+    "song_number": 212,
+    "speed": 55,
+    "sound": "Avec expression",
+    "paroles_de": "André Gibert",
+    "musique_de": null,
+    "metres": "8f8.8f8(8)",
+    "melodie": "Déjà, Seigneur, tes gloires suiven"
+  },
+  "213": {
+    "song_number": 213,
+    "speed": 75,
+    "sound": "Solennel",
+    "paroles_de": "Bernard de Clairvaux (1090-1153)",
+    "musique_de": "Hans-Leo Hassler (1564-1612) harmoisé par Jean S. Bach, 1729",
+    "metres": "6f6.6f6.D",
+    "melodie": null
+  },
+  "214": {
+    "song_number": 214,
+    "speed": 85,
+    "sound": "Soutenu et sans lenteur",
+    "paroles_de": "Georges Erné",
+    "musique_de": null,
+    "metres": "8f8f8.D.8f8.8f8",
+    "melodie": "Ton Fils unique"
+  },
+  "215": {
+    "song_number": 215,
+    "speed": 55,
+    "sound": "Recueilli",
+    "paroles_de": "Jean Koechlin",
+    "musique_de": "Franz Schubert (1797-1828)",
+    "metres": "8f8.8f8.(8)",
+    "melodie": "Ô Dieu, nous racontons"
+  },
+  "216": {
+    "song_number": 216,
+    "speed": 90,
+    "sound": "Avec ferveur",
+    "paroles_de": "André Gibert",
+    "musique_de": "César Malan (1787-1864)",
+    "metres": "12f12.12f8.(8)",
+    "melodie": "À nous nourrir de Toi"
+  },
+  "217": {
+    "song_number": 217,
+    "speed": 35,
+    "sound": "Recueilli et lié",
+    "paroles_de": "John-Nelson Darby (1800-1882) traduites par André Cuendet",
+    "musique_de": "Mélodie hollandaise",
+    "metres": "10f10.D",
+    "melodie": "Ô jour d'angoisse"
+  },
+  "218": {
+    "song_number": 218,
+    "speed": 85,
+    "sound": "Avec expression",
+    "paroles_de": "Cantique pour les enfants",
+    "musique_de": "Henry James Ernest Holmes (1852-?)",
+    "metres": "8f8.8f8.5f5f8",
+    "melodie": "Pater Omnium, 1875"
+  },
+  "219": {
+    "song_number": 219,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Pierre Diedrichs et Jean Koechlin",
+    "musique_de": "Karl-Friedrich Ellwanger (1796-1856)",
+    "metres": "8f8.8f8",
+    "melodie": "Zu Deinem Tisch sind wir geladen"
+  },
+  "220": {
+    "song_number": 220,
+    "speed": 80,
+    "sound": "Avec ferveur",
+    "paroles_de": "Paul Jeanmonod",
+    "musique_de": "Francis Westbrook (1849-1873)",
+    "metres": "8f8.8f8.D",
+    "melodie": "Objets de ta divine grâce"
+  },
+  "221": {
+    "song_number": 221,
+    "speed": 100,
+    "sound": "Avec Ampleur",
+    "paroles_de": "Pierre Diedrichs",
+    "musique_de": "Gilbert Peytrignet",
+    "metres": "10f10.10f6",
+    "melodie": "Nous admirons la splendeur éternelle"
+  },
+  "222": {
+    "song_number": 222,
+    "speed": 100,
+    "sound": "Avec ferveur",
+    "paroles_de": "Pierre Diedrichs (20ème siècle)",
+    "musique_de": null,
+    "metres": "12f12.D",
+    "melodie": "Heureuse liberté"
+  },
+  "223": {
+    "song_number": 223,
+    "speed": 75,
+    "sound": "Solennel, sans lenteur",
+    "paroles_de": "Pierre Diedrichs (20ème siècle)",
+    "musique_de": "Pierre St Sulpice",
+    "metres": "8f8.8f8.D",
+    "melodie": "Qui dira, Jésus la souffrance"
+  },
+  "224": {
+    "song_number": 224,
+    "speed": 90,
+    "sound": "Avec ampleur",
+    "paroles_de": "Pierre Diedrichs",
+    "musique_de": "Ruth Demaurex",
+    "metres": "12f12.D",
+    "melodie": "Nous exaltons, ô Dieu"
+  },
+  "225": {
+    "song_number": 225,
+    "speed": 85,
+    "sound": "Avec majesté",
+    "paroles_de": null,
+    "musique_de": null,
+    "metres": "6f10.3f(3).9f11f.10f10",
+    "melodie": "À Celui qui nous aime"
+  },
+  "226": {
+    "song_number": 226,
+    "speed": 60,
+    "sound": "Avec ferveur",
+    "paroles_de": "Théodore Monod (1836-1921)",
+    "musique_de": "Philippe-Paul Bliss (1838-1876)",
+    "metres": "5f5.5f5.D",
+    "melodie": "Ah ! Donne à notre âme"
+  },
+  "227": {
+    "song_number": 227,
+    "speed": 60,
+    "sound": "Avec joie",
+    "paroles_de": "Pierre Diedrichs",
+    "musique_de": "Gilbert Peytrignet",
+    "metres": "6f6.6f6.D",
+    "melodie": "Jésus-Christ nous apporte"
+  },
+  "228": {
+    "song_number": 228,
+    "speed": 60,
+    "sound": null,
+    "paroles_de": "Émile Laügt",
+    "musique_de": "Ruth Demaurex",
+    "metres": "12f8.(8).12f8",
+    "melodie": "Il n'est point ici-bas"
+  },
+  "229": {
+    "song_number": 229,
+    "speed": 100,
+    "sound": "Avec allant et afﬁrmation",
+    "paroles_de": "Émile Bonnard",
+    "musique_de": "Gilbert Peytrigney",
+    "metres": "8f8.8f8",
+    "melodie": "Ta Parole est notre richesse"
+  },
+  "230": {
+    "song_number": 230,
+    "speed": 85,
+    "sound": "Sans lenteur, doux",
+    "paroles_de": "Louis Poget-Junot",
+    "musique_de": "Ruth Demaurex",
+    "metres": "8f4.8f4.D",
+    "melodie": "Que deviendrait dans sa faiblesse"
+  },
+  "231": {
+    "song_number": 231,
+    "speed": 90,
+    "sound": "Doux et soutenu",
+    "paroles_de": "Freddy Gfeller",
+    "musique_de": "Ruth Demaurex",
+    "metres": "12f12.D",
+    "melodie": "Ma grâce te sufﬁt"
+  },
+  "232": {
+    "song_number": 232,
+    "speed": 85,
+    "sound": "Paisible, mais sans lenteur",
+    "paroles_de": "Hector Arnéra",
+    "musique_de": "Ruth Demaurex",
+    "metres": "6f6.6f6.D",
+    "melodie": "Aux jours d'épreuve amère"
+  },
+  "233": {
+    "song_number": 233,
+    "speed": 90,
+    "sound": "Avec élan",
+    "paroles_de": "Henri Rossier (1835-1928)",
+    "musique_de": "Pierre St Sulpice",
+    "metres": "7f7.7f7.D",
+    "melodie": "Ô Seigneur, dans la nuit sombre"
+  },
+  "234": {
+    "song_number": 234,
+    "speed": 80,
+    "sound": "Avec ampleur",
+    "paroles_de": "Ruth Demaurex",
+    "musique_de": "H.-P. Smith (1825-1898)",
+    "metres": "88.88",
+    "melodie": "Sur Tes promesses"
+  },
+  "235": {
+    "song_number": 235,
+    "speed": 90,
+    "sound": "Avec ferveur",
+    "paroles_de": "Ruth Demaurex (20ème siècle)",
+    "musique_de": "Benjamin Mansell Ramsey (1849-1923), 1919",
+    "metres": "64.64.66.64",
+    "melodie": "Jour après jour, Seigneur"
+  },
+  "236": {
+    "song_number": 236,
+    "speed": 110,
+    "sound": "Avec ampleur",
+    "paroles_de": "Ruth Demaurex",
+    "musique_de": "Franz Schuber (1797-1828)",
+    "metres": "5f5.5f5.D",
+    "melodie": "Qui peut te connaître"
+  },
+  "237": {
+    "song_number": 237,
+    "speed": 80,
+    "sound": "Tranquille",
+    "paroles_de": "Katharina von Schlegel (1697-1768), 1752 traduites par Ruth Demaurex",
+    "musique_de": "Jean Sibélius (1865-1957), 1899",
+    "metres": "10f10.10f10.10f10",
+    "melodie": "Repose-toi"
+  },
+  "238": {
+    "song_number": 238,
+    "speed": 80,
+    "sound": "Avec ampleur",
+    "paroles_de": "Pierre Dietrichs",
+    "musique_de": null,
+    "metres": "12f12f.12.12",
+    "melodie": "Ô Sauveur, ô vrai Dieu"
+  },
+  "239": {
+    "song_number": 239,
+    "speed": 70,
+    "sound": "Avec ampleur",
+    "paroles_de": "Pierre Diedrichs",
+    "musique_de": "Ruth Demaurex",
+    "metres": "12f12.D",
+    "melodie": "Père, nous comprendrons"
+  },
+  "240": {
+    "song_number": 240,
+    "speed": 105,
+    "sound": "Avec majesté",
+    "paroles_de": "Edmond-Louis Budry (1854-1912)",
+    "musique_de": "Georg-Friedrich Haendel (1685-1759)",
+    "metres": "4f5.5f5.5f5.5f5 REF 4f5.5f5",
+    "melodie": "À toi la gloire, ô ressuscité !"
+  },
+  "241": {
+    "song_number": 241,
+    "speed": 85,
+    "sound": "Avec joie",
+    "paroles_de": "Ruth Demaurex",
+    "musique_de": "Ruth Demaurex",
+    "metres": "75f.75f.D",
+    "melodie": "Jésus est ressuscité"
+  },
+  "242": {
+    "song_number": 242,
+    "speed": 70,
+    "sound": "Avec élan et lié",
+    "paroles_de": "Jean Koechlin (20ème siècle)",
+    "musique_de": "Georges-Coles Stebbins",
+    "metres": "8f8.8f8.D",
+    "melodie": "La foi"
+  },
+  "243": {
+    "song_number": 243,
+    "speed": 80,
+    "sound": "Doux, mais sans lenteur",
+    "paroles_de": "Clément-Cotterill Scholeﬁeld (1839-1904) traduites par Ruth Demaurex",
+    "musique_de": "Clément-Cotterill Scholeﬁeld (1839-1904)",
+    "metres": "8f8.8f8",
+    "melodie": "St. Clément"
+  },
+  "244": {
+    "song_number": 244,
+    "speed": 60,
+    "sound": "Avec allant et ferveur",
+    "paroles_de": "Madeleine Thorens (20ème siècle)",
+    "musique_de": "Madeleine Thorens (20ème siècle)",
+    "metres": "10f10.10f10.D",
+    "melodie": "Comme les vierges"
+  },
+  "245": {
+    "song_number": 245,
+    "speed": 85,
+    "sound": "Recueilli",
+    "paroles_de": "John-Nelson Darby (1800-1882) traduites par Abel Bard",
+    "musique_de": "Henri Annen",
+    "metres": "8f8.8f8",
+    "melodie": "Jésus, Fils bien-aimé du Père"
+  },
+  "246": {
+    "song_number": 246,
+    "speed": 92,
+    "sound": "Ferme et soutenu",
+    "paroles_de": "Ernst Moritz Arndt (1769-1860) traduites par Eugène Bersier (1831-1889)",
+    "musique_de": "Samuel Hofer",
+    "metres": "88.8f8f.88",
+    "melodie": "La Parole du Seigneur"
+  },
+  "247": {
+    "song_number": 247,
+    "speed": 85,
+    "sound": "Avec ferveur",
+    "paroles_de": "André Gibert",
+    "musique_de": "Henri Plumhof (1836-1914)",
+    "metres": "12f12.D",
+    "melodie": "Pour toujours avec toi"
+  },
+  "248": {
+    "song_number": 248,
+    "speed": 60,
+    "sound": "Avec expression",
+    "paroles_de": "Ch. Chatelanat (1893-1984)",
+    "musique_de": "Lowell Mason (1797-1872)",
+    "metres": "64.64.6f6f.64",
+    "melodie": "Mon Dieu plus près de toi"
+  },
+  "249": {
+    "song_number": 249,
+    "speed": 90,
+    "sound": "Avec expression",
+    "paroles_de": "Mme Mary Lemire ( ? - 1852)",
+    "musique_de": "Charles Czerny (1791-1857)",
+    "metres": "10f10.D",
+    "melodie": "Czerny"
+  },
+  "250": {
+    "song_number": 250,
+    "speed": 70,
+    "sound": "Avec expression",
+    "paroles_de": "Mme H. Megroz-Cornaz (1895)",
+    "musique_de": "William Batchelder Bradbury (1816-1868)",
+    "metres": "7f7.7f7.D.(7f7)",
+    "melodie": "Une nacelle en silence"
+  },
+  "251": {
+    "song_number": 251,
+    "speed": 90,
+    "sound": "Animé",
+    "paroles_de": "J.-R. Mazeirac",
+    "musique_de": "Charles Czerny (1791-1857)",
+    "metres": "10f10.D",
+    "melodie": "Czerny"
+  },
+  "252": {
+    "song_number": 252,
+    "speed": 60,
+    "sound": "Animé",
+    "paroles_de": "Nancy Coulin",
+    "musique_de": "John Hart Stockton (1813-1877)",
+    "metres": "86f.86f.77.76",
+    "melodie": "Ô vous qui n'avez pas la paix"
+  },
+  "253": {
+    "song_number": 253,
+    "speed": 70,
+    "sound": "Animé",
+    "paroles_de": "J.-Wesley Lelièvre",
+    "musique_de": "Air canadien",
+    "metres": "6f4.6f4.D",
+    "melodie": "Le Seigneur nous appelle"
+  },
+  "254": {
+    "song_number": 254,
+    "speed": 55,
+    "sound": "Avec allant",
+    "paroles_de": "Edmond-Louis Budry (1854-1932)",
+    "musique_de": "William Doane (1832-1915)",
+    "metres": "7f7.7f7.67",
+    "melodie": "Jésus est là, qui t'appelle"
+  },
+  "255": {
+    "song_number": 255,
+    "speed": 80,
+    "sound": "Avec allant",
+    "paroles_de": "Ed. Barde (1834-1904)",
+    "musique_de": "Ira-David Sankey (1840-1908)",
+    "metres": "10f10f.66",
+    "melodie": "C'est encor temps"
+  },
+  "256": {
+    "song_number": 256,
+    "speed": 70,
+    "sound": "Avec expression",
+    "paroles_de": "Ed. Barde (1834-1904)",
+    "musique_de": "Ira-David Sankey (1840-1908)",
+    "metres": "7f7.7f7 REF 7f7.7f7",
+    "melodie": "Fully trusting"
+  },
+  "257": {
+    "song_number": 257,
+    "speed": 80,
+    "sound": "Lié, avec allant",
+    "paroles_de": "Mlle Amélia Humbert (? - 1936)",
+    "musique_de": "G.-C. Williams (1882)",
+    "metres": "7f7.7f7 REF 7f7.7f7",
+    "melodie": "Entends-tu ? Jésus t'appelle"
+  },
+  "258": {
+    "song_number": 258,
+    "speed": 30,
+    "sound": "Doux et recueilli",
+    "paroles_de": "Mlle Charlotte Elliott (1789 -1871)",
+    "musique_de": "William Batchelder Bradbury (1816-1868)",
+    "metres": "88.88",
+    "melodie": "Tel que je suis"
+  },
+  "259": {
+    "song_number": 259,
+    "speed": 90,
+    "sound": "Avec allant",
+    "paroles_de": "Edouard Monod (1842-1898)",
+    "musique_de": "Edwin-Othello Excell (1851-1921)",
+    "metres": "7f8.7f8.7f7f.7f8",
+    "melodie": "Jésus frappe à votre porte"
+  },
+  "260": {
+    "song_number": 260,
+    "speed": 85,
+    "sound": "Avec allant et expression",
+    "paroles_de": "Charles-François Recordon (1800-1870)",
+    "musique_de": "Sigmund Von Neukomm (1778-1858)",
+    "metres": "12f12.12f4(4)",
+    "melodie": "Jésus, le Fils de Dieu"
+  },
+  "261": {
+    "song_number": 261,
+    "speed": 144,
+    "sound": "Animé",
+    "paroles_de": "Samuel OMalley Gore Cluff (1837-1910), 1860 traduites par Rubens Saillens",
+    "musique_de": "Ira-David Sankey (1840-1908), 1874",
+    "metres": null,
+    "melodie": null
+  },
+  "262": {
+    "song_number": 262,
+    "speed": 80,
+    "sound": "Avec allant",
+    "paroles_de": "tirées de la Bonne nouvelle (1880)",
+    "musique_de": "Clément Müller (1815-1898)",
+    "metres": "7f7.7f7",
+    "melodie": "Cité d'or"
+  },
+  "263": {
+    "song_number": 263,
+    "speed": 80,
+    "sound": "Avec élan",
+    "paroles_de": "Auguste Glardon (1839-1922)",
+    "musique_de": "Georges-Frederick Root (1820-1895)",
+    "metres": "8f8.8f6 REF 8f8.8f6",
+    "melodie": "Venez au Sauveur qui vous aime"
+  },
+  "264": {
+    "song_number": 264,
+    "speed": 54,
+    "sound": "Tranquille",
+    "paroles_de": "Mary A. Bachelor-Bullock, 1874",
+    "musique_de": "Philip-Paul Bliss (1838-1876), 1874",
+    "metres": "5f5.5f5.D",
+    "melodie": "Viens, âme qui pleures"
+  },
+  "265": {
+    "song_number": 265,
+    "speed": 110,
+    "sound": "Avec joie",
+    "paroles_de": "Gédéon Jaulmes (1825-1910)",
+    "musique_de": "William-Howard Doane (1832-1915)",
+    "metres": "7f7.7f7",
+    "melodie": "Dans les cieux et sur la terre"
+  },
+  "266": {
+    "song_number": 266,
+    "speed": 110,
+    "sound": null,
+    "paroles_de": "Reueil Empeytaz (1824)",
+    "musique_de": "Johann-Ludwig F. Hainlin (1750-1823)",
+    "metres": "8f8.8f8 REF 88.(8)",
+    "melodie": null
+  },
+  "267": {
+    "song_number": 267,
+    "speed": 72,
+    "sound": "Lié, avec expression",
+    "paroles_de": "Ruben Saillens",
+    "musique_de": "Lewis Hartsough",
+    "metres": "7f7.7f7 REF 7f7.7f7",
+    "melodie": "Il est un roc séculaire"
+  },
+  "268": {
+    "song_number": 268,
+    "speed": 88,
+    "sound": "Avec allant",
+    "paroles_de": "Frances Jane dit Fanny Crosby (1820-1915) traduites par Theodore Monod (1836-1921)",
+    "musique_de": "William-Howard Doane (1832-1915)",
+    "metres": "6f6.6f6.D REF 6f6.6f6",
+    "melodie": "Sur toi je me repose"
+  },
+  "269": {
+    "song_number": 269,
+    "speed": 75,
+    "sound": "Avec élan",
+    "paroles_de": "Ernest Favre",
+    "musique_de": "William-Howard Doane (1832-1915)",
+    "metres": "5f5.5f5.D",
+    "melodie": "Viens, âme perdue"
+  },
+  "270": {
+    "song_number": 270,
+    "speed": 80,
+    "sound": "Avec expression",
+    "paroles_de": "Abel Deschamps",
+    "musique_de": "Abel Deschamps",
+    "metres": "88f.8f8 REF 66.68f",
+    "melodie": "Possèdes-tu, dès aujourd'hui"
+  },
+  "271": {
+    "song_number": 271,
+    "speed": 80,
+    "sound": "Heureux",
+    "paroles_de": "Théophile Rivier",
+    "musique_de": "John Fawcett (1789-1867)",
+    "metres": "7f6.7f6",
+    "melodie": "Viens à Jésus : il t'appelle"
+  }
+}

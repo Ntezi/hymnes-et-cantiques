@@ -48,3 +48,29 @@ To set up the application on your local machine, follow these steps:
 
 ## EAS Build
 `eas build --profile preview`
+
+## Web Audio From S3 (Offline Cache)
+- Web can load melody MP3s from S3/CloudFront instead of bundling them in Firebase hosting.
+- Default web audio base URL is `https://ntezi-media.s3.amazonaws.com/hymnes-cantiques/audio`.
+- You can override it with `EXPO_PUBLIC_WEB_AUDIO_S3_BASE_URL` (see `.env.example`).
+- File naming expected in S3: `hec_001.mp3` ... `hec_271.mp3` and `hec_200bis.mp3`.
+- On web, songs are preloaded into browser cache when a song page is opened, then played from cache for offline replay.
+- Configure S3/CloudFront CORS to allow `GET` from your web domain so browser preloading can fetch and cache the files.
+- Android/iOS keep using bundled local audio.
+
+### Audio Integrity Check (Local vs S3)
+- Run: `npm run check:audio-s3`
+- Defaults:
+  - bucket: `ntezi-media`
+  - prefix: `hymnes-cantiques/audio`
+  - local dir: `./audio`
+- Override defaults with args:
+  - `npm run check:audio-s3 -- --bucket <bucket> --prefix <prefix> --dir <local-audio-dir>`
+- Or set env vars:
+  - `AUDIO_S3_BUCKET`
+  - `AUDIO_S3_PREFIX`
+
+The script reports:
+- files missing in S3
+- files extra in S3
+- files with size mismatch

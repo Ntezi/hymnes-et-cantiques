@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 const SplashScreen = () => {
@@ -9,9 +8,7 @@ const SplashScreen = () => {
 	return (
 		<View style={styles.container}>
 			<View style={styles.topContainer}>
-				<View style={styles.iconCard}>
-					<Icon name="book-outline" size={42} color="#ffffff" />
-				</View>
+				<Image source={require('../assets/app-icon.png')} style={styles.iconImage} />
 				<Text style={styles.title}>{t('splash.title')}</Text>
 				<Text style={styles.subtitle}>{t('splash.subtitle')}</Text>
 				<Text style={styles.verse}>{t('splash.verse')}</Text>
@@ -35,13 +32,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 24,
     },
-    iconCard: {
+    iconImage: {
         width: 94,
         height: 94,
         borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.14)',
-        alignItems: 'center',
-        justifyContent: 'center',
         marginBottom: 24,
     },
     bottomContainer: {
