@@ -44,7 +44,8 @@
     "web": "expo start --web",
     "generate:melody-metadata": "node ./scripts/generate-midi-melody-metadata.mjs",
     "predeploy": "expo export:web",
-    "deploy-hosting": "npm run predeploy && firebase deploy --only hosting"
+    "deploy-hosting": "npm run predeploy && firebase deploy --only hosting",
+    "analyze:melody-groups": "node ./scripts/analyze-melody-groups.mjs"
   },
   "version": "1.0.0",
   "private": true,
