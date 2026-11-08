@@ -90,27 +90,27 @@ const MainTabsNavigator = () => {
 			<Tab.Screen
 				name={TAB_ROUTES.HOME}
 				component={SongListScreen}
-				options={{ title: t('tabs.home') }}
+				options={{ title: t('tabs.home'), tabBarAccessibilityLabel: t('tabs.home') }}
 			/>
 			<Tab.Screen
 				name={TAB_ROUTES.SEARCH}
 				component={SearchScreen}
-				options={{ title: t('tabs.search') }}
+				options={{ title: t('tabs.search'), tabBarAccessibilityLabel: t('tabs.search') }}
 			/>
 			<Tab.Screen
 				name={TAB_ROUTES.RECENT}
 				component={RecentScreen}
-				options={{ title: t('tabs.recent') }}
+				options={{ title: t('tabs.recent'), tabBarAccessibilityLabel: t('tabs.recent') }}
 			/>
 			<Tab.Screen
 				name={TAB_ROUTES.FAVORITES}
 				component={FavoriteSongsScreen}
-				options={{ title: t('tabs.favorites') }}
+				options={{ title: t('tabs.favorites'), tabBarAccessibilityLabel: t('tabs.favorites') }}
 			/>
 			<Tab.Screen
 				name={TAB_ROUTES.LIBRARY}
 				component={CollectionsScreen}
-				options={{ title: t('tabs.library') }}
+				options={{ title: t('tabs.library'), tabBarAccessibilityLabel: t('tabs.library') }}
 			/>
 		</Tab.Navigator>
 	);

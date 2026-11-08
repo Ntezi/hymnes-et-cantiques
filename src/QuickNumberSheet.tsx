@@ -49,6 +49,8 @@ const QuickNumberSheet = ({ visible, onClose, onSubmit }: QuickNumberSheetProps)
 			key={digit}
 			style={styles.digitButton}
 			onPress={() => onPressDigit(digit)}
+			accessibilityRole="button"
+			accessibilityLabel={digit}
 		>
 			<Text style={styles.digitText}>{digit}</Text>
 		</TouchableOpacity>
@@ -66,7 +68,12 @@ const QuickNumberSheet = ({ visible, onClose, onSubmit }: QuickNumberSheetProps)
 				<View style={styles.sheet}>
 					<View style={styles.headerRow}>
 						<Text style={styles.sheetTitle}>{t('quickNumber.title')}</Text>
-						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
+						<TouchableOpacity
+							style={styles.closeButton}
+							onPress={onClose}
+							accessibilityRole="button"
+							accessibilityLabel={t('common.close')}
+						>
 							<Icon name="close" size={20} color="#666666" />
 						</TouchableOpacity>
 					</View>
@@ -78,7 +85,12 @@ const QuickNumberSheet = ({ visible, onClose, onSubmit }: QuickNumberSheetProps)
 
 					<View style={styles.keypadGrid}>
 						{['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(renderDigitButton)}
-						<TouchableOpacity style={styles.actionButton} onPress={onBackspace}>
+						<TouchableOpacity
+							style={styles.actionButton}
+							onPress={onBackspace}
+							accessibilityRole="button"
+							accessibilityLabel={t('quickNumber.backspace')}
+						>
 							<Icon name="backspace-outline" size={22} color="#666666" />
 						</TouchableOpacity>
 						{renderDigitButton('0')}
@@ -86,6 +98,9 @@ const QuickNumberSheet = ({ visible, onClose, onSubmit }: QuickNumberSheetProps)
 							style={[styles.actionButton, styles.goButton, number.length === 0 && styles.goButtonDisabled]}
 							disabled={number.length === 0}
 							onPress={onGo}
+							accessibilityRole="button"
+							accessibilityLabel={t('quickNumber.go')}
+							accessibilityState={{ disabled: number.length === 0 }}
 						>
 							<Text style={styles.goButtonText}>{t('quickNumber.go')}</Text>
 						</TouchableOpacity>
@@ -125,9 +140,9 @@ const styles = StyleSheet.create({
 		color: '#1a1a1a',
 	},
 	closeButton: {
-		width: 34,
-		height: 34,
-		borderRadius: 10,
+		width: 44,
+		height: 44,
+		borderRadius: 12,
 		backgroundColor: '#f5f5f5',
 		alignItems: 'center',
 		justifyContent: 'center',

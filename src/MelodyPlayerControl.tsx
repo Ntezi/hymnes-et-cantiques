@@ -101,7 +101,12 @@ const MelodyPlayerControl = ({
 			{errorMessage ? (
 				<View style={styles.errorWrap}>
 					<Text style={styles.errorText}>{errorMessage}</Text>
-					<TouchableOpacity style={styles.retryButton} onPress={onRetryLoad}>
+					<TouchableOpacity
+						style={styles.retryButton}
+						onPress={onRetryLoad}
+						accessibilityRole="button"
+						accessibilityLabel={t('common.retry')}
+					>
 						<Text style={styles.retryButtonText}>{t('common.retry')}</Text>
 					</TouchableOpacity>
 				</View>
@@ -116,10 +121,24 @@ const MelodyPlayerControl = ({
 				activeOpacity={0.85}
 				onPress={onTrackPress}
 				onLayout={onTrackLayout}
-				style={styles.seekTrack}
+				style={styles.seekHitArea}
 				disabled={!isReady}
+				accessibilityRole="adjustable"
+				accessibilityLabel={t('melody.seek')}
+				accessibilityValue={{ min: 0, max: 100, now: Math.round(progressRatio * 100) }}
+				accessibilityState={{ disabled: !isReady }}
+				accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+				onAccessibilityAction={(event) => {
+					if (event.nativeEvent.actionName === 'increment') {
+						onSeek(Math.min(durationMs || positionMs + 10_000, positionMs + 10_000));
+					} else if (event.nativeEvent.actionName === 'decrement') {
+						onSeek(Math.max(0, positionMs - 10_000));
+					}
+				}}
 			>
-				<View style={[styles.seekFill, { width: `${progressRatio * 100}%` }]} />
+				<View pointerEvents="none" style={styles.seekTrack}>
+					<View style={[styles.seekFill, { width: `${progressRatio * 100}%` }]} />
+				</View>
 			</TouchableOpacity>
 
 			<View style={styles.controlsRow}>
@@ -127,6 +146,9 @@ const MelodyPlayerControl = ({
 					style={[styles.iconButton, !isReady && styles.iconButtonDisabled]}
 					disabled={!isReady}
 					onPress={() => onSeek(Math.max(0, positionMs - 10_000))}
+					accessibilityRole="button"
+					accessibilityLabel={t('melody.back10')}
+					accessibilityState={{ disabled: !isReady }}
 				>
 					<Icon name="play-back" size={16} color={isReady ? '#6d3549' : '#b3b3b3'} />
 				</TouchableOpacity>
@@ -135,6 +157,9 @@ const MelodyPlayerControl = ({
 					style={[styles.playButton, (!isReady || isLoading) && styles.playButtonDisabled]}
 					disabled={!isReady || isLoading}
 					onPress={onTogglePlayPause}
+					accessibilityRole="button"
+					accessibilityLabel={isPlaying ? t('melody.pause') : t('melody.play')}
+					accessibilityState={{ disabled: !isReady || isLoading }}
 				>
 					<Icon
 						name={isPlaying ? 'pause' : 'play'}
@@ -147,6 +172,9 @@ const MelodyPlayerControl = ({
 					style={[styles.iconButton, !isReady && styles.iconButtonDisabled]}
 					disabled={!isReady}
 					onPress={() => onSeek(Math.min(durationMs || positionMs + 10_000, positionMs + 10_000))}
+					accessibilityRole="button"
+					accessibilityLabel={t('melody.forward10')}
+					accessibilityState={{ disabled: !isReady }}
 				>
 					<Icon name="play-forward" size={16} color={isReady ? '#6d3549' : '#b3b3b3'} />
 				</TouchableOpacity>
@@ -155,6 +183,9 @@ const MelodyPlayerControl = ({
 					style={[styles.stopButton, !isReady && styles.iconButtonDisabled]}
 					disabled={!isReady}
 					onPress={onStop}
+					accessibilityRole="button"
+					accessibilityLabel={t('melody.stop')}
+					accessibilityState={{ disabled: !isReady }}
 				>
 					<Text style={[styles.stopText, !isReady && styles.stopTextDisabled]}>{t('melody.stop')}</Text>
 				</TouchableOpacity>
@@ -216,6 +247,8 @@ const styles = StyleSheet.create({
 		color: '#8a314c',
 	},
 	retryButton: {
+		minHeight: 44,
+		justifyContent: 'center',
 		marginTop: 8,
 		alignSelf: 'flex-start',
 		paddingHorizontal: 10,
@@ -238,8 +271,12 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: '#7a7a7a',
 	},
+	seekHitArea: {
+		// 44px tall touch area around the 8px bar; negative margins keep the old layout.
+		marginTop: -12,
+		paddingVertical: 18,
+	},
 	seekTrack: {
-		marginTop: 6,
 		height: 8,
 		borderRadius: 999,
 		backgroundColor: '#f0d9e2',
@@ -250,15 +287,15 @@ const styles = StyleSheet.create({
 		backgroundColor: '#6d3549',
 	},
 	controlsRow: {
-		marginTop: 12,
+		marginTop: -6,
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
 	},
 	iconButton: {
-		width: 34,
-		height: 34,
-		borderRadius: 17,
+		width: 44,
+		height: 44,
+		borderRadius: 22,
 		backgroundColor: '#fdf2f6',
 		borderWidth: 1,
 		borderColor: '#f5d6e1',
@@ -281,6 +318,8 @@ const styles = StyleSheet.create({
 		backgroundColor: '#c792a5',
 	},
 	stopButton: {
+		minHeight: 44,
+		justifyContent: 'center',
 		paddingHorizontal: 11,
 		paddingVertical: 8,
 		borderRadius: 10,

@@ -26,6 +26,13 @@ import {
 	setSameMelodySongIds,
 } from './melodyLinks';
 import { useTranslation } from 'react-i18next';
+import {
+	clampLyricsFontStep,
+	DEFAULT_LYRICS_FONT_STEP,
+	LYRICS_FONT_SIZES,
+	loadLyricsFontStep,
+	saveLyricsFontStep,
+} from './settings';
 import { HE_C_AUDIO } from '../audio';
 
 const REPEAT_MARKER_SPLIT_REGEX = /(\((?:bis|ter|x\d+)\)|\bbis\b|\bter\b|\bx\d+\b|R:\/?)/gi;
@@ -84,6 +91,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isBuffering, setIsBuffering] = useState(false);
 	const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
+	const [fontStep, setFontStep] = useState(DEFAULT_LYRICS_FONT_STEP);
 	const scrollViewRef = useRef<ScrollView | null>(null);
 	const lineOffsetMapRef = useRef<Record<string, number>>({});
 	const lastAutoScrollLineRef = useRef<string | null>(null);
@@ -140,11 +148,34 @@ const SongDetailScreen = ({ route, navigation }) => {
 				.filter((song): song is AppSong => Boolean(song)),
 		[crossLanguageSongIds, allSongs]
 	);
+	const lyricsFontSize = LYRICS_FONT_SIZES[fontStep];
+	const lyricFontStyles = useMemo(
+		() => ({
+			line: { lineHeight: Math.round(lyricsFontSize * 1.6) },
+			text: { fontSize: lyricsFontSize, lineHeight: Math.round(lyricsFontSize * 1.6) },
+			number: { fontSize: lyricsFontSize },
+			instructions: { fontSize: Math.max(12, lyricsFontSize - 2) },
+		}),
+		[lyricsFontSize]
+	);
 	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
 		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
 			return t(`languages.${languageCode}`);
 		}
 		return fallbackLabel;
+	};
+
+	useEffect(() => {
+		loadLyricsFontStep().then(setFontStep);
+	}, []);
+
+	const changeFontStep = (delta: number) => {
+		const nextStep = clampLyricsFontStep(fontStep + delta);
+		if (nextStep === fontStep) {
+			return;
+		}
+		setFontStep(nextStep);
+		saveLyricsFontStep(nextStep);
 	};
 
 	useEffect(() => {
@@ -403,7 +434,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 						<HighlightedText
 							key={`${lineKey}-repeat-${segmentIndex}`}
 							isActive={isActiveLine}
-							style={styles.singingInstructions}
+							style={[styles.singingInstructions, lyricFontStyles.instructions]}
 							activeStyle={styles.activeSingingInstructions}
 						>
 							{segment}
@@ -428,7 +459,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 							<HighlightedText
 								key={`${lineKey}-word-${segmentIndex}-${tokenIndex}`}
 								isActive={isWordActive || isLineFallbackActive}
-								style={styles.verseText}
+								style={[styles.verseText, lyricFontStyles.text]}
 								activeStyle={isWordActive ? styles.activeWordText : styles.activeVerseText}
 							>
 								{token}
@@ -465,6 +496,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 			onPress={onPress}
 			disabled={disabled}
 			activeOpacity={0.8}
+			accessibilityRole="button"
+			accessibilityLabel={badge ? `${label}, ${badge}` : label}
+			accessibilityState={{ disabled, selected: active }}
 		>
 			<View style={styles.actionIconWrap}>
 				<Icon
@@ -507,10 +541,10 @@ const SongDetailScreen = ({ route, navigation }) => {
 				}}
 				style={[styles.verseLineWrap, isActiveLine && styles.activeVerseLineWrap]}
 			>
-				<Text style={styles.verseLine}>
+				<Text style={[styles.verseLine, lyricFontStyles.line]}>
 					{verseNumber ? (
 						<HighlightedText
-							style={styles.verseNumber}
+							style={[styles.verseNumber, lyricFontStyles.number]}
 							activeStyle={styles.activeVerseNumber}
 							isActive={isActiveLine}
 						>
@@ -597,6 +631,34 @@ const SongDetailScreen = ({ route, navigation }) => {
 					/>
 				) : null}
 
+					<View style={styles.fontSizeRow}>
+						<Text style={styles.fontSizeLabel}>{t('songDetail.fontSize')}</Text>
+						<View style={styles.fontSizeButtons}>
+							<TouchableOpacity
+								style={[styles.fontSizeButton, fontStep === 0 && styles.fontSizeButtonDisabled]}
+								disabled={fontStep === 0}
+								onPress={() => changeFontStep(-1)}
+								activeOpacity={0.8}
+								accessibilityRole="button"
+								accessibilityLabel={t('songDetail.fontSmaller')}
+								accessibilityState={{ disabled: fontStep === 0 }}
+							>
+								<Text style={[styles.fontSizeButtonText, styles.fontSizeButtonTextSmall, fontStep === 0 && styles.fontSizeButtonTextDisabled]}>A-</Text>
+							</TouchableOpacity>
+							<TouchableOpacity
+								style={[styles.fontSizeButton, fontStep === LYRICS_FONT_SIZES.length - 1 && styles.fontSizeButtonDisabled]}
+								disabled={fontStep === LYRICS_FONT_SIZES.length - 1}
+								onPress={() => changeFontStep(1)}
+								activeOpacity={0.8}
+								accessibilityRole="button"
+								accessibilityLabel={t('songDetail.fontLarger')}
+								accessibilityState={{ disabled: fontStep === LYRICS_FONT_SIZES.length - 1 }}
+							>
+								<Text style={[styles.fontSizeButtonText, fontStep === LYRICS_FONT_SIZES.length - 1 && styles.fontSizeButtonTextDisabled]}>A+</Text>
+							</TouchableOpacity>
+						</View>
+					</View>
+
 					<View style={styles.versesWrap}>
 					{verses.map((verse, index) => {
 						const lines = verse.split('\n').map(line => line.trim()).filter(Boolean);
@@ -620,6 +682,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 							style={styles.sameMelodyEditButton}
 							onPress={() => setIsSameMelodySheetVisible(true)}
 							activeOpacity={0.8}
+							accessibilityRole="button"
+							accessibilityLabel={`${t('common.edit')}: ${t('sameMelody.sectionTitle')}`}
 						>
 							<Icon name="create-outline" size={14} color="#6d3549" />
 							<Text style={styles.sameMelodyEditText}>{t('common.edit')}</Text>
@@ -634,6 +698,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 							<TouchableOpacity
 								key={sameMelodySong.song_id}
 								style={styles.sameMelodyCard}
+								accessibilityRole="button"
+								accessibilityLabel={`${sameMelodySong.song_number}. ${sameMelodySong.title}`}
 								onPress={() =>
 									navigateToSongDetail(
 										sameMelodySong,
@@ -663,6 +729,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 					<TouchableOpacity
 						style={[styles.navButton, !previousSong && styles.navButtonDisabled]}
 						disabled={!previousSong}
+						accessibilityRole="button"
+						accessibilityLabel={t('songDetail.previous')}
+						accessibilityState={{ disabled: !previousSong }}
 						onPress={() => navigateToSongDetail(previousSong)}
 					>
 						<Icon name="chevron-back" size={16} color={previousSong ? '#6d3549' : '#b3b3b3'} />
@@ -674,6 +743,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 					<TouchableOpacity
 						style={[styles.navButton, !nextSong && styles.navButtonDisabled]}
 						disabled={!nextSong}
+						accessibilityRole="button"
+						accessibilityLabel={t('songDetail.next')}
+						accessibilityState={{ disabled: !nextSong }}
 						onPress={() => navigateToSongDetail(nextSong)}
 					>
 						<Text style={[styles.navButtonText, !nextSong && styles.navButtonTextDisabled]}>
@@ -898,6 +970,46 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: '#666666',
 	},
+	fontSizeRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		marginBottom: 6,
+	},
+	fontSizeLabel: {
+		fontSize: 13,
+		fontWeight: '600',
+		color: '#666666',
+	},
+	fontSizeButtons: {
+		flexDirection: 'row',
+	},
+	fontSizeButton: {
+		minWidth: 52,
+		height: 44,
+		marginLeft: 8,
+		borderRadius: 12,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	fontSizeButtonDisabled: {
+		backgroundColor: '#f7f7f7',
+		borderColor: '#ececec',
+	},
+	fontSizeButtonText: {
+		fontSize: 17,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
+	fontSizeButtonTextSmall: {
+		fontSize: 14,
+	},
+	fontSizeButtonTextDisabled: {
+		color: '#b3b3b3',
+	},
 	versesWrap: {
 		marginTop: 2,
 	},
@@ -986,6 +1098,7 @@ const styles = StyleSheet.create({
 	sameMelodyEditButton: {
 		flexDirection: 'row',
 		alignItems: 'center',
+		minHeight: 44,
 		paddingHorizontal: 10,
 		paddingVertical: 6,
 		borderRadius: 999,
@@ -1058,6 +1171,7 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		minWidth: 122,
+		minHeight: 44,
 		justifyContent: 'center',
 	},
 	navButtonDisabled: {

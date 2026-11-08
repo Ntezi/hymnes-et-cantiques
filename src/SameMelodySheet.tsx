@@ -90,6 +90,9 @@ const SameMelodySheet = ({
 				style={[styles.songRow, selected && styles.songRowSelected]}
 				onPress={() => toggleSong(item.song_id)}
 				activeOpacity={0.8}
+				accessibilityRole="checkbox"
+				accessibilityLabel={`${item.song_number}. ${item.title}`}
+				accessibilityState={{ checked: selected }}
 			>
 				<View style={[styles.checkbox, selected && styles.checkboxSelected]}>
 					{selected ? <Icon name="checkmark" size={14} color="#ffffff" /> : null}
@@ -128,7 +131,12 @@ const SameMelodySheet = ({
 							<Icon name="musical-notes-outline" size={18} color="#6d3549" />
 							<Text style={styles.sheetTitle}>{t('sameMelody.title')}</Text>
 						</View>
-						<TouchableOpacity style={styles.closeButton} onPress={onClose}>
+						<TouchableOpacity
+							style={styles.closeButton}
+							onPress={onClose}
+							accessibilityRole="button"
+							accessibilityLabel={t('common.close')}
+						>
 							<Icon name="close" size={20} color="#666666" />
 						</TouchableOpacity>
 					</View>
@@ -148,6 +156,7 @@ const SameMelodySheet = ({
 							placeholderTextColor="#999999"
 							value={search}
 							onChangeText={setSearch}
+							accessibilityLabel={t('sameMelody.searchPlaceholder')}
 							style={styles.searchInput}
 						/>
 					</View>
@@ -168,12 +177,17 @@ const SameMelodySheet = ({
 							{t('sameMelody.selectedCount', { count: draftSelection.length })}
 						</Text>
 						<View style={styles.footerButtons}>
-							<TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={onClose}>
+							<TouchableOpacity
+								style={[styles.actionButton, styles.cancelButton]}
+								onPress={onClose}
+								accessibilityRole="button"
+							>
 								<Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
 							</TouchableOpacity>
 							<TouchableOpacity
 								style={[styles.actionButton, styles.saveButton]}
 								onPress={() => onSave(draftSelection)}
+								accessibilityRole="button"
 							>
 								<Text style={styles.saveButtonText}>{t('common.save')}</Text>
 							</TouchableOpacity>
@@ -220,9 +234,9 @@ const styles = StyleSheet.create({
 		marginLeft: 6,
 	},
 	closeButton: {
-		width: 34,
-		height: 34,
-		borderRadius: 10,
+		width: 44,
+		height: 44,
+		borderRadius: 12,
 		backgroundColor: '#f5f5f5',
 		alignItems: 'center',
 		justifyContent: 'center',
@@ -359,6 +373,7 @@ const styles = StyleSheet.create({
 	},
 	actionButton: {
 		flex: 1,
+		minHeight: 44,
 		paddingVertical: 11,
 		borderRadius: 10,
 		alignItems: 'center',
