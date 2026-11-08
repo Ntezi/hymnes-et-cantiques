@@ -22,7 +22,9 @@ import {
 import {
 	getDefaultSameMelodySongIds,
 	getSameMelodySongIds,
+	hasUserMelodyOverrides,
 	loadMelodyLinkMap,
+	resetUserMelodyOverrides,
 	setSameMelodySongIds,
 } from './melodyLinks';
 import { useTranslation } from 'react-i18next';
@@ -80,6 +82,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [favoriteCategories, setFavoriteCategories] = useState<FavoriteCategory[]>([]);
 	const [isFavoriteSheetVisible, setIsFavoriteSheetVisible] = useState(false);
 	const [sameMelodySongIds, setSameMelodySongIdsState] = useState<string[]>([]);
+	const [hasMelodyOverrides, setHasMelodyOverrides] = useState(false);
 	const [isSameMelodySheetVisible, setIsSameMelodySheetVisible] = useState(false);
 	const [isLanguageSheetVisible, setIsLanguageSheetVisible] = useState(false);
 	const [isMelodyControlVisible, setIsMelodyControlVisible] = useState(false);
@@ -188,11 +191,13 @@ const SongDetailScreen = ({ route, navigation }) => {
 		});
 
 		(async () => {
-			const [loadedCategories, melodyLinkMap] = await Promise.all([
+			const [loadedCategories, melodyLinkMap, hasOverrides] = await Promise.all([
 				loadFavoriteCategories(),
 				loadMelodyLinkMap(),
+				hasUserMelodyOverrides(),
 			]);
 			setFavoriteCategories(loadedCategories);
+			setHasMelodyOverrides(hasOverrides);
 			setSameMelodySongIdsState(getSameMelodySongIds(song_id, melodyLinkMap));
 			await addRecentSongId(song_id);
 		})();
@@ -314,12 +319,18 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const effectiveDurationMs = playbackDurationMs || fallbackDurationMs;
 	const isMelodyReady = hasMelodySource && !isMelodyLoading && !melodyError;
 
-	const navigateToSongDetail = (song: AppSong | null, songSequence: AppSong[] = songs) => {
+	// Prev/next replace the screen (they walk the current list). Same-melody and translation
+	// links push, so Back returns to the hymn the user came from.
+	const navigateToSongDetail = (
+		song: AppSong | null,
+		songSequence: AppSong[] = songs,
+		mode: 'replace' | 'push' = 'replace'
+	) => {
 		if (!song) {
 			return;
 		}
 
-		navigation.replace('SongDetail', {
+		navigation[mode]('SongDetail', {
 			...song,
 			songs: songSequence,
 		});
@@ -329,13 +340,22 @@ const SongDetailScreen = ({ route, navigation }) => {
 		setIsLanguageSheetVisible(false);
 		navigateToSongDetail(
 			song,
-			getCollectionById(song.collection_id)?.songs || [song]
+			getCollectionById(song.collection_id)?.songs || [song],
+			'push'
 		);
 	};
 
 	const saveSameMelodySongs = async (linkedSongIds: string[]) => {
 		const updatedLinkMap = await setSameMelodySongIds(song_id, linkedSongIds);
 		setSameMelodySongIdsState(getSameMelodySongIds(song_id, updatedLinkMap));
+		setHasMelodyOverrides(await hasUserMelodyOverrides());
+		setIsSameMelodySheetVisible(false);
+	};
+
+	const resetSameMelodyChanges = async () => {
+		const defaultLinkMap = await resetUserMelodyOverrides();
+		setSameMelodySongIdsState(getSameMelodySongIds(song_id, defaultLinkMap));
+		setHasMelodyOverrides(false);
 		setIsSameMelodySheetVisible(false);
 	};
 
@@ -703,7 +723,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 								onPress={() =>
 									navigateToSongDetail(
 										sameMelodySong,
-										getCollectionById(sameMelodySong.collection_id)?.songs || [sameMelodySong]
+										getCollectionById(sameMelodySong.collection_id)?.songs || [sameMelodySong],
+										'push'
 									)
 								}
 							>
@@ -800,8 +821,10 @@ const SongDetailScreen = ({ route, navigation }) => {
 				allSongs={allSongs}
 				selectedSongIds={sameMelodySongIds}
 				defaultSongIds={getDefaultSameMelodySongIds(song_id)}
+				hasUserChanges={hasMelodyOverrides}
 				onClose={() => setIsSameMelodySheetVisible(false)}
 				onSave={saveSameMelodySongs}
+				onReset={resetSameMelodyChanges}
 			/>
 		</SafeAreaView>
 	);

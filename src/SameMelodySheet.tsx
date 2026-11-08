@@ -18,8 +18,10 @@ interface SameMelodySheetProps {
 	allSongs: AppSong[];
 	selectedSongIds: string[];
 	defaultSongIds?: string[];
+	hasUserChanges?: boolean;
 	onClose: () => void;
 	onSave: (songIds: string[]) => void;
+	onReset?: () => void;
 }
 
 const SameMelodySheet = ({
@@ -28,12 +30,15 @@ const SameMelodySheet = ({
 	allSongs,
 	selectedSongIds,
 	defaultSongIds = [],
+	hasUserChanges = false,
 	onClose,
 	onSave,
+	onReset,
 }: SameMelodySheetProps) => {
 	const { t } = useTranslation();
 	const [search, setSearch] = useState('');
 	const [draftSelection, setDraftSelection] = useState<string[]>([]);
+	const [isConfirmingReset, setIsConfirmingReset] = useState(false);
 
 	useEffect(() => {
 		if (!visible) {
@@ -41,11 +46,12 @@ const SameMelodySheet = ({
 		}
 
 		setSearch('');
+		setIsConfirmingReset(false);
 		setDraftSelection(selectedSongIds);
 	}, [visible, selectedSongIds]);
 
-	// Melody links live inside one edition (the same hymn number exists in every language),
-	// so only offer songs from the current collection.
+	// Links are stored by hymn number and apply to every edition, but the list shows the
+	// current edition only.
 	const candidateSongs = useMemo(
 		() =>
 			allSongs
@@ -73,7 +79,8 @@ const SameMelodySheet = ({
 	}, [candidateSongs, selectedSongIds, search]);
 
 	const isSelected = (songId: string) => draftSelection.includes(songId);
-	const isHymnalLink = (songId: string) => defaultSongIds.includes(songId);
+	const isConfirmedLink = (songId: string) => defaultSongIds.includes(songId);
+	const isUserLink = (songId: string) => isSelected(songId) && !isConfirmedLink(songId);
 
 	const toggleSong = (songId: string) => {
 		setDraftSelection((prevSelection) =>
@@ -106,10 +113,16 @@ const SameMelodySheet = ({
 						<Text style={styles.songSubtitle} numberOfLines={1}>{item.sub_title}</Text>
 					) : null}
 				</View>
-				{isHymnalLink(item.song_id) ? (
+				{isConfirmedLink(item.song_id) ? (
 					<View style={styles.hymnalTag}>
-						<Icon name="book-outline" size={11} color="#6d3549" />
-						<Text style={styles.hymnalTagText}>{t('sameMelody.fromHymnal')}</Text>
+						<Icon name="checkmark-circle-outline" size={11} color="#6d3549" />
+						<Text style={styles.hymnalTagText}>{t('sameMelody.confirmed')}</Text>
+					</View>
+				) : null}
+				{isUserLink(item.song_id) ? (
+					<View style={styles.hymnalTag}>
+						<Icon name="person-outline" size={11} color="#6d3549" />
+						<Text style={styles.hymnalTagText}>{t('sameMelody.yours')}</Text>
 					</View>
 				) : null}
 			</TouchableOpacity>
@@ -173,6 +186,37 @@ const SameMelodySheet = ({
 					/>
 
 					<View style={styles.footerActions}>
+						{hasUserChanges && onReset ? (
+							isConfirmingReset ? (
+								<View style={styles.resetConfirmBox}>
+									<Text style={styles.resetConfirmText}>{t('sameMelody.resetConfirm')}</Text>
+									<View style={styles.footerButtons}>
+										<TouchableOpacity
+											style={[styles.actionButton, styles.cancelButton]}
+											onPress={() => setIsConfirmingReset(false)}
+											accessibilityRole="button"
+										>
+											<Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+										</TouchableOpacity>
+										<TouchableOpacity
+											style={[styles.actionButton, styles.saveButton]}
+											onPress={onReset}
+											accessibilityRole="button"
+										>
+											<Text style={styles.saveButtonText}>{t('sameMelody.resetAction')}</Text>
+										</TouchableOpacity>
+									</View>
+								</View>
+							) : (
+								<TouchableOpacity
+									style={styles.resetButton}
+									onPress={() => setIsConfirmingReset(true)}
+									accessibilityRole="button"
+								>
+									<Text style={styles.resetButtonText}>{t('sameMelody.reset')}</Text>
+								</TouchableOpacity>
+							)
+						) : null}
 						<Text style={styles.selectedCountText}>
 							{t('sameMelody.selectedCount', { count: draftSelection.length })}
 						</Text>
@@ -350,6 +394,32 @@ const styles = StyleSheet.create({
 		fontSize: 10,
 		fontWeight: '700',
 		color: '#6d3549',
+	},
+	resetButton: {
+		minHeight: 44,
+		alignItems: 'center',
+		justifyContent: 'center',
+		marginBottom: 4,
+	},
+	resetButtonText: {
+		fontSize: 13,
+		fontWeight: '600',
+		color: '#8a314c',
+		textDecorationLine: 'underline',
+	},
+	resetConfirmBox: {
+		marginBottom: 10,
+		padding: 10,
+		borderRadius: 10,
+		backgroundColor: '#fff0f4',
+		borderWidth: 1,
+		borderColor: '#f3c6d5',
+	},
+	resetConfirmText: {
+		fontSize: 12,
+		lineHeight: 17,
+		color: '#8a314c',
+		marginBottom: 8,
 	},
 	emptyText: {
 		fontSize: 13,

@@ -1,21 +1,33 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLLECTION_CATALOG } from './library';
 import melodyGroupsData from './melodyGroups.json';
+import {
+	applyLinkSelection,
+	buildDefaultNumberMap,
+	emptyOverrides,
+	hasOverrides,
+	legacyLinksToSongIdOverrides,
+	MelodyLinkOverrides,
+	NumberLinkMap,
+	normalizeOverrides,
+	parseSongNumber,
+	resolveEffectiveMap,
+	SongIdLinkMap,
+} from './melodyLinkCore';
 
-export type MelodyLinkMap = Record<string, string[]>;
-
-interface MelodyLinkOverrides {
-	added: MelodyLinkMap;
-	removed: MelodyLinkMap;
-}
+// Effective links keyed by hymn number (shared by the rw / fr / en editions).
+export type MelodyLinkMap = NumberLinkMap;
 
 /**
- * Same-melody links = hymnal defaults (src/melodyGroups.json) + user additions - user removals.
+ * Same-melody links = confirmed groups (src/melodyGroups.json) + user additions - user removals.
  *
  * Only the user's own edits are persisted, so the default groups can be corrected in a new
  * app version without being overwritten by (or overwriting) what the user linked themselves.
+ * Overrides are keyed by hymn number so an edit applies to every edition.
  */
-const MELODY_LINK_OVERRIDES_KEY = 'melody_link_overrides';
+const MELODY_LINK_OVERRIDES_KEY = 'melody_link_overrides_v2';
+// Previous storage: overrides keyed by song_id ('hymnes-rw:5'). Kept on disk after migration as a backup.
+const SONG_ID_OVERRIDES_KEY = 'melody_link_overrides';
 
 // Storage used by the previous implementation (fully materialized map seeded with defaults).
 const LEGACY_MELODY_LINKS_KEY = 'melody_links';
@@ -44,43 +56,34 @@ const LEGACY_DEFAULT_GROUPS: number[][] = [
 // All editions (rw / fr / en) share the hymnal numbering, so a melody group applies to each collection.
 const MELODY_GROUPS: number[][] = (melodyGroupsData as { groups: number[][] }).groups;
 
+const KNOWN_SONG_IDS = new Set(
+	COLLECTION_CATALOG.flatMap(collection => collection.songs.map(song => song.song_id))
+);
+
 const uniqueSongIds = (songIds: string[]): string[] =>
 	Array.from(new Set(songIds.filter(songId => typeof songId === 'string' && songId.trim().length > 0)));
 
-const buildGroupLinkMap = (groups: number[][], collectionIds: string[]): MelodyLinkMap => {
-	const knownSongIds = new Set(
-		COLLECTION_CATALOG.flatMap(collection => collection.songs.map(song => song.song_id))
-	);
-	const map: MelodyLinkMap = {};
+const DEFAULT_MELODY_LINK_MAP: MelodyLinkMap = buildDefaultNumberMap(MELODY_GROUPS);
 
-	collectionIds.forEach((collectionId) => {
-		groups.forEach((group) => {
-			const songIds = uniqueSongIds(group.map(songNumber => `${collectionId}:${songNumber}`))
-				.filter(songId => knownSongIds.has(songId));
-			if (songIds.length < 2) {
-				return;
-			}
-
-			songIds.forEach((songId) => {
-				map[songId] = uniqueSongIds([
-					...(map[songId] || []),
-					...songIds.filter(linkedSongId => linkedSongId !== songId),
-				]);
-			});
+const buildLegacyDefaultMap = (): SongIdLinkMap => {
+	const map: SongIdLinkMap = {};
+	LEGACY_DEFAULT_GROUPS.forEach((group) => {
+		const songIds = uniqueSongIds(group.map(songNumber => `hymnes-rw:${songNumber}`))
+			.filter(songId => KNOWN_SONG_IDS.has(songId));
+		if (songIds.length < 2) {
+			return;
+		}
+		songIds.forEach((songId) => {
+			map[songId] = uniqueSongIds([
+				...(map[songId] || []),
+				...songIds.filter(linkedSongId => linkedSongId !== songId),
+			]);
 		});
 	});
-
 	return map;
 };
 
-const DEFAULT_MELODY_LINK_MAP: MelodyLinkMap = buildGroupLinkMap(
-	MELODY_GROUPS,
-	COLLECTION_CATALOG.map(collection => collection.id)
-);
-
-const LEGACY_DEFAULT_MELODY_LINK_MAP: MelodyLinkMap = buildGroupLinkMap(LEGACY_DEFAULT_GROUPS, ['hymnes-rw']);
-
-const normalizeMelodyLinkMap = (value: unknown): MelodyLinkMap => {
+const normalizeSongIdMap = (value: unknown): SongIdLinkMap => {
 	if (!value || typeof value !== 'object') {
 		return {};
 	}
@@ -97,42 +100,6 @@ const normalizeMelodyLinkMap = (value: unknown): MelodyLinkMap => {
 		.filter(([, links]) => links.length > 0);
 
 	return Object.fromEntries(entries);
-};
-
-const normalizeOverrides = (value: unknown): MelodyLinkOverrides => {
-	const candidate = (value && typeof value === 'object' ? value : {}) as Partial<MelodyLinkOverrides>;
-	return {
-		added: normalizeMelodyLinkMap(candidate.added),
-		removed: normalizeMelodyLinkMap(candidate.removed),
-	};
-};
-
-const diffLinks = (songIds: string[], otherSongIds: string[]): string[] => {
-	const other = new Set(otherSongIds);
-	return songIds.filter(songId => !other.has(songId));
-};
-
-const resolveEffectiveMap = (overrides: MelodyLinkOverrides): MelodyLinkMap => {
-	const songIds = new Set([
-		...Object.keys(DEFAULT_MELODY_LINK_MAP),
-		...Object.keys(overrides.added),
-	]);
-	const map: MelodyLinkMap = {};
-
-	songIds.forEach((songId) => {
-		const links = diffLinks(
-			uniqueSongIds([
-				...(DEFAULT_MELODY_LINK_MAP[songId] || []),
-				...(overrides.added[songId] || []),
-			]),
-			overrides.removed[songId] || []
-		);
-		if (links.length > 0) {
-			map[songId] = links;
-		}
-	});
-
-	return map;
 };
 
 const saveOverrides = async (overrides: MelodyLinkOverrides): Promise<void> => {
@@ -153,29 +120,13 @@ const migrateLegacyStorage = async (): Promise<MelodyLinkOverrides | null> => {
 		return null;
 	}
 
-	const legacyMap = normalizeMelodyLinkMap(JSON.parse(legacyRaw));
-	const wasSeeded = legacySeedVersion === LEGACY_SEEDED_VERSION;
-	const added: MelodyLinkMap = {};
-	const removed: MelodyLinkMap = {};
-
-	const songIds = new Set([
-		...Object.keys(legacyMap),
-		...(wasSeeded ? Object.keys(LEGACY_DEFAULT_MELODY_LINK_MAP) : []),
-	]);
-	songIds.forEach((songId) => {
-		const savedLinks = legacyMap[songId] || [];
-		const legacyDefaults = wasSeeded ? (LEGACY_DEFAULT_MELODY_LINK_MAP[songId] || []) : [];
-		const userAdded = diffLinks(savedLinks, legacyDefaults);
-		const userRemoved = diffLinks(legacyDefaults, savedLinks);
-		if (userAdded.length > 0) {
-			added[songId] = userAdded;
-		}
-		if (userRemoved.length > 0) {
-			removed[songId] = userRemoved;
-		}
-	});
-
-	return { added, removed };
+	return normalizeOverrides(
+		legacyLinksToSongIdOverrides(
+			normalizeSongIdMap(JSON.parse(legacyRaw)),
+			legacySeedVersion === LEGACY_SEEDED_VERSION,
+			buildLegacyDefaultMap()
+		)
+	);
 };
 
 const loadOverrides = async (): Promise<MelodyLinkOverrides> => {
@@ -184,73 +135,72 @@ const loadOverrides = async (): Promise<MelodyLinkOverrides> => {
 		return normalizeOverrides(JSON.parse(raw));
 	}
 
-	const migrated = await migrateLegacyStorage();
-	const overrides = migrated || { added: {}, removed: {} };
+	// First run of this version: bring over overrides keyed by song_id, merging editions by hymn number.
+	const songIdRaw = await AsyncStorage.getItem(SONG_ID_OVERRIDES_KEY);
+	const migrated = songIdRaw ? normalizeOverrides(JSON.parse(songIdRaw)) : await migrateLegacyStorage();
+	const overrides = migrated || emptyOverrides();
 	await saveOverrides(overrides);
-	if (migrated) {
+	if (!songIdRaw && migrated) {
 		await AsyncStorage.multiRemove([LEGACY_MELODY_LINKS_KEY, LEGACY_SEED_VERSION_KEY]).catch(() => undefined);
 	}
 	return overrides;
 };
 
-export const getDefaultSameMelodySongIds = (songId: string): string[] =>
-	DEFAULT_MELODY_LINK_MAP[songId] || [];
+// Song ids of the same edition as `songId` for the given hymn numbers (only hymns that exist there).
+const toSongIds = (songId: string, numbers: number[]): string[] => {
+	const collectionId = songId.split(':')[0];
+	return numbers
+		.map(number => `${collectionId}:${number}`)
+		.filter(linkedSongId => KNOWN_SONG_IDS.has(linkedSongId));
+};
+
+export const getDefaultSameMelodySongIds = (songId: string): string[] => {
+	const number = parseSongNumber(songId);
+	return number === null ? [] : toSongIds(songId, DEFAULT_MELODY_LINK_MAP[number] || []);
+};
 
 export const loadMelodyLinkMap = async (): Promise<MelodyLinkMap> => {
 	try {
 		const overrides = await loadOverrides();
-		return resolveEffectiveMap(overrides);
+		return resolveEffectiveMap(DEFAULT_MELODY_LINK_MAP, overrides);
 	} catch {
 		return DEFAULT_MELODY_LINK_MAP;
 	}
 };
 
-export const getSameMelodySongIds = (songId: string, melodyLinkMap: MelodyLinkMap): string[] =>
-	melodyLinkMap[songId] || [];
-
-const setLink = (overrides: MelodyLinkOverrides, fromSongId: string, toSongId: string, linked: boolean) => {
-	const isDefault = (DEFAULT_MELODY_LINK_MAP[fromSongId] || []).includes(toSongId);
-	const added = new Set(overrides.added[fromSongId] || []);
-	const removed = new Set(overrides.removed[fromSongId] || []);
-
-	if (linked) {
-		removed.delete(toSongId);
-		if (!isDefault) {
-			added.add(toSongId);
-		}
-	} else {
-		added.delete(toSongId);
-		if (isDefault) {
-			removed.add(toSongId);
-		}
-	}
-
-	overrides.added[fromSongId] = Array.from(added);
-	overrides.removed[fromSongId] = Array.from(removed);
+export const getSameMelodySongIds = (songId: string, melodyLinkMap: MelodyLinkMap): string[] => {
+	const number = parseSongNumber(songId);
+	return number === null ? [] : toSongIds(songId, melodyLinkMap[number] || []);
 };
 
 export const setSameMelodySongIds = async (
 	songId: string,
 	nextLinkedSongIds: string[]
 ): Promise<MelodyLinkMap> => {
+	const number = parseSongNumber(songId);
+	if (number === null) {
+		return loadMelodyLinkMap();
+	}
+
 	const overrides = await loadOverrides();
-	const currentLinkedIds = getSameMelodySongIds(songId, resolveEffectiveMap(overrides));
-	const nextLinkedIds = uniqueSongIds(nextLinkedSongIds.filter(linkedSongId => linkedSongId !== songId));
-	const nextSet = new Set(nextLinkedIds);
+	const nextNumbers = nextLinkedSongIds
+		.map(linkedSongId => parseSongNumber(linkedSongId))
+		.filter((linked): linked is number => linked !== null);
+	const updated = applyLinkSelection(DEFAULT_MELODY_LINK_MAP, overrides, number, nextNumbers);
+	await saveOverrides(updated);
+	return resolveEffectiveMap(DEFAULT_MELODY_LINK_MAP, updated);
+};
 
-	// Links are symmetric: keep both directions consistent.
-	currentLinkedIds.forEach((linkedSongId) => {
-		if (!nextSet.has(linkedSongId)) {
-			setLink(overrides, songId, linkedSongId, false);
-			setLink(overrides, linkedSongId, songId, false);
-		}
-	});
-	nextLinkedIds.forEach((linkedSongId) => {
-		setLink(overrides, songId, linkedSongId, true);
-		setLink(overrides, linkedSongId, songId, true);
-	});
+export const hasUserMelodyOverrides = async (): Promise<boolean> => {
+	try {
+		return hasOverrides(await loadOverrides());
+	} catch {
+		return false;
+	}
+};
 
-	const normalized = normalizeOverrides(overrides);
-	await saveOverrides(normalized);
-	return resolveEffectiveMap(normalized);
+// Clears only the user's own additions/removals; the confirmed groups are untouched.
+export const resetUserMelodyOverrides = async (): Promise<MelodyLinkMap> => {
+	await saveOverrides(emptyOverrides());
+	return DEFAULT_MELODY_LINK_MAP;
 };
