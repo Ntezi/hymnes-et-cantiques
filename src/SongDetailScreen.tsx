@@ -671,13 +671,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 							</View>
 							<View style={styles.songTitleText}>
 								<Text style={styles.songTitle}>{title}</Text>
-								{sub_title || (currentIndex >= 0 && songs.length > 1) ? (
-									<Text style={styles.songSubtitle} numberOfLines={1}>
-										{sub_title ? <Text style={styles.songSubtitleItalic}>{sub_title}</Text> : null}
-										{sub_title && currentIndex >= 0 && songs.length > 1 ? '  ·  ' : ''}
-										{currentIndex >= 0 && songs.length > 1
-											? t('songDetail.positionOf', { current: currentIndex + 1, total: songs.length })
-											: ''}
+								{sub_title ? (
+									<Text style={[styles.songSubtitle, styles.songSubtitleItalic]} numberOfLines={1}>
+										{sub_title}
 									</Text>
 								) : null}
 							</View>
