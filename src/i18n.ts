@@ -142,6 +142,7 @@ const resources = {
 				stop: 'Stop',
 			},
 			songDetail: {
+				positionOf: '{{current}} of {{total}}',
 				fontSize: 'Text size',
 				fontSmaller: 'Smaller text',
 				fontLarger: 'Larger text',
@@ -299,6 +300,7 @@ const resources = {
 				stop: 'Stop',
 			},
 			songDetail: {
+				positionOf: '{{current}} sur {{total}}',
 				fontSize: 'Taille du texte',
 				fontSmaller: 'Texte plus petit',
 				fontLarger: 'Texte plus grand',
@@ -456,6 +458,7 @@ const resources = {
 				stop: 'Hagarika',
 			},
 			songDetail: {
+				positionOf: '{{current}} kuri {{total}}',
 				fontSize: 'Inyuguti',
 				fontSmaller: 'Inyuguti nto',
 				fontLarger: 'Inyuguti nini',

@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import SafeAreaView from "react-native-safe-area-view";
+import {
+	HandlerStateChangeEvent,
+	PanGestureHandler,
+	PanGestureHandlerEventPayload,
+	State,
+} from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { AppSong, getAllSongs, getCollectionById } from './library';
 import { addRecentSongId } from './recentSongs';
@@ -45,6 +51,10 @@ const WHITESPACE_SEGMENT_REGEX = /^\s+$/;
 const SHOW_MELODY_PLAYBACK = true;
 const ENABLE_LYRIC_HIGHLIGHTING = false;
 const LYRIC_SYNC_LEAD_MS = 0;
+const SWIPE_MIN_DISTANCE = 60;
+const SWIPE_MIN_VELOCITY = 500;
+// Swipes that start this close to the left edge are left to the system back gesture (iOS).
+const SWIPE_LEFT_EDGE_GUARD = 24;
 
 const tokenizeLyricWords = (text: string): string[] =>
 	text
@@ -307,6 +317,27 @@ const SongDetailScreen = ({ route, navigation }) => {
 			...song,
 			songs: songSequence,
 		});
+	};
+
+	const isAnySheetVisible = isFavoriteSheetVisible || isSameMelodySheetVisible || isLanguageSheetVisible;
+
+	// Swipe left = next hymn, swipe right = previous hymn, in the list the user came from.
+	const onSwipeStateChange = (event: HandlerStateChangeEvent<PanGestureHandlerEventPayload>) => {
+		const { state, oldState, translationX, velocityX, x } = event.nativeEvent;
+		if (state !== State.END || oldState !== State.ACTIVE) {
+			return;
+		}
+		if (x - translationX < SWIPE_LEFT_EDGE_GUARD) {
+			return;
+		}
+
+		const isFarEnough = Math.abs(translationX) >= SWIPE_MIN_DISTANCE;
+		const isFastEnough = Math.abs(velocityX) >= SWIPE_MIN_VELOCITY && Math.abs(translationX) >= SWIPE_MIN_DISTANCE / 2;
+		if (!isFarEnough && !isFastEnough) {
+			return;
+		}
+
+		navigateToSongDetail(translationX < 0 ? nextSong : previousSong);
 	};
 
 	const onSelectCrossLanguageSong = (song: AppSong) => {
@@ -594,7 +625,19 @@ const SongDetailScreen = ({ route, navigation }) => {
 
 	return (
 		<SafeAreaView style={styles.container}>
+			<PanGestureHandler
+				enabled={!isAnySheetVisible && songs.length > 1}
+				activeOffsetX={[-30, 30]}
+				failOffsetY={[-20, 20]}
+				onHandlerStateChange={onSwipeStateChange}
+			>
+			<View style={styles.swipeArea}>
 				<ScrollView ref={scrollViewRef} contentContainerStyle={styles.contentContainer}>
+					{currentIndex >= 0 && songs.length > 1 ? (
+						<Text style={styles.positionText}>
+							{t('songDetail.positionOf', { current: currentIndex + 1, total: songs.length })}
+						</Text>
+					) : null}
 					<View style={styles.songHeaderCard}>
 						<View style={styles.songNumberBadge}>
 							<Text style={styles.songNumberBadgeText}>{song_number}</Text>
@@ -790,6 +833,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 					</TouchableOpacity>
 				</View>
 			</ScrollView>
+			</View>
+			</PanGestureHandler>
 			<LanguageSwitchSheet
 				visible={isLanguageSheetVisible}
 				currentSong={{
@@ -848,6 +893,16 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: '#fafafa',
+	},
+	swipeArea: {
+		flex: 1,
+	},
+	positionText: {
+		alignSelf: 'flex-end',
+		marginBottom: 6,
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#666666',
 	},
 	contentContainer: {
 		paddingHorizontal: 16,
