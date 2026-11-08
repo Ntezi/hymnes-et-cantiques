@@ -95,7 +95,8 @@ export const AppStateProvider = ({ children }: { children: React.ReactNode }) =>
 				if (isMounted) {
 					setSelectedCollectionIdState(fallbackCollectionId);
 					setUiLanguageState(defaultUiLanguage);
-					setNeedsLanguageChoice(false);
+					// Storage could not be read: ask, rather than silently opening the Kinyarwanda hymnal.
+					setNeedsLanguageChoice(true);
 					i18n.changeLanguage(defaultUiLanguage);
 				}
 			}
