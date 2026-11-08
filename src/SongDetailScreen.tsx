@@ -26,6 +26,7 @@ import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import MelodyPlayerControl from './MelodyPlayerControl';
 import LyricLine from './LyricLine';
 import { getSongMelodyMetadata } from './melodyMetadata';
+import { getTextNote } from './textNotes';
 import {
 	buildLineKey,
 	findActiveEventIndex,
@@ -147,6 +148,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 		return HE_C_AUDIO[String(song_number)] ?? null;
 	}, [song_number]);
 	const hasMelodySource = Boolean(localAsset);
+	const textNote = useMemo(() => getTextNote(collection_id, song_number), [collection_id, song_number]);
 	const hymnTiming = useMemo(
 		() => (collection_id === FOLLOW_ALONG_COLLECTION_ID && hasMelodySource ? getHymnTiming(song_number) : null),
 		[collection_id, song_number, hasMelodySource]
@@ -756,6 +758,13 @@ const SongDetailScreen = ({ route, navigation }) => {
 						</View>
 					</View>
 
+				{textNote ? (
+					<View style={styles.textNoteRow}>
+						<Icon name="information-circle-outline" size={14} color="#8a6d3b" />
+						<Text style={styles.textNoteText}>{t(`textNotes.${textNote}`)}</Text>
+					</View>
+				) : null}
+
 				{SHOW_MELODY_PLAYBACK && isMelodyControlVisible ? (
 					// Claims horizontal drags that start in the player (seek bar) so they never change the hymn.
 					<PanGestureHandler ref={playerPanRef} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
@@ -984,6 +993,20 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		paddingVertical: 14,
 		paddingBottom: 28,
+	},
+	textNoteRow: {
+		flexDirection: 'row',
+		alignItems: 'flex-start',
+		marginHorizontal: 4,
+		marginTop: -4,
+		marginBottom: 12,
+	},
+	textNoteText: {
+		flex: 1,
+		fontSize: 12,
+		lineHeight: 16,
+		color: '#8a6d3b',
+		marginLeft: 6,
 	},
 	songHeaderCard: {
 		backgroundColor: '#ffffff',

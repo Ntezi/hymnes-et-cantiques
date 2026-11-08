@@ -166,6 +166,11 @@ const resources = {
 				unableToStopPlayback: 'Unable to stop playback right now.',
 				unableToSeek: 'Unable to seek at this moment.',
 			},
+			textNotes: {
+				missingVerse: "A verse is missing in this edition",
+				versesMixed: "Some verses may be out of order",
+				checkText: "This text is being checked; some words may be missing or misplaced",
+			},
 			splash: {
 				title: 'Hymnes et Cantiques',
 				subtitle: 'Kinyarwanda, French, English & Ewe',
@@ -328,6 +333,11 @@ const resources = {
 				unableToChangePlayback: 'Impossible de changer la lecture.',
 				unableToStopPlayback: "Impossible d'arrêter la lecture.",
 				unableToSeek: 'Impossible de déplacer la lecture.',
+			},
+			textNotes: {
+				missingVerse: "Un couplet manque dans cette édition",
+				versesMixed: "Certains couplets peuvent être dans le désordre",
+				checkText: "Ce texte est en cours de vérification ; des mots peuvent manquer ou être déplacés",
 			},
 			splash: {
 				title: 'Hymnes et Cantiques',
@@ -492,6 +502,11 @@ const resources = {
 				unableToStopPlayback: 'Ntibikunze guhagarika audio.',
 				unableToSeek: 'Ntibikunze gusimbuka ahari.',
 			},
+			textNotes: {
+				missingVerse: "Muri iyi nyandiko hari igitero kibura",
+				versesMixed: "Ibitero bimwe bishobora kuba bitakurikiranye neza",
+				checkText: "Iyi nyandiko iracyasuzumwa; amagambo amwe ashobora kuba abura cyangwa yashyizwe ahatari ho",
+			},
 			splash: {
 				title: 'Hymnes et Cantiques',
 				subtitle: "Ikinyarwanda, Igifaransa, Icyongereza n'Eʋegbe",
@@ -654,6 +669,11 @@ const resources = {
 				unableToChangePlayback: 'Mete ŋu trɔ ɖeɖea fifia o.',
 				unableToStopPlayback: 'Mete ŋu tɔ nɔ ɖeɖea fifia o.',
 				unableToSeek: 'Mete ŋu yi afi ma fifia o.',
+			},
+			textNotes: {
+				missingVerse: "Hadzi ƒe akpa aɖe bu le woƒe ɖoɖo sia me",
+				versesMixed: "Hadzi ƒe akpawo ate ŋu ana woƒe ɖoɖo madzɔ",
+				checkText: "Le nuŋɔŋlɔ sia dzi kpɔm: nya aɖewo ate ŋu abu alo le teƒe madzɔmadzɔ",
 			},
 			splash: {
 				title: 'Hymnes et Cantiques',
