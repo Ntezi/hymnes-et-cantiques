@@ -263,6 +263,9 @@ const buildCrossLanguageMap = (rwSongs, frSongs, enSongs) => {
 			links.en = `hymnes-en:${number}`;
 		}
 
+		// The Ewe edition (songs_ee.json) is maintained by hand and shares the numbering.
+		links.ee = `hymnes-ee:${number}`;
+
 		if (Object.keys(links).length > 0) {
 			map[`hymnes-rw:${number}`] = links;
 		}

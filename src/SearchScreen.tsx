@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { AppSong, getCollectionById } from './library';
 import { loadFavoriteSongIds } from './favorites';
 import { useAppState } from './appState';
+import { searchSongs, SearchResult } from './searchUtils';
 
 const SearchScreen = ({ navigation }) => {
 	const { t } = useTranslation();
@@ -31,7 +32,7 @@ const SearchScreen = ({ navigation }) => {
 		[selectedCollection]
 	);
 	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
-		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en' || languageCode === 'ee') {
 			return t(`languages.${languageCode}`);
 		}
 		return fallbackLabel;
@@ -61,18 +62,11 @@ const SearchScreen = ({ navigation }) => {
 		return unsubscribe;
 	}, [navigation]);
 
-	const filteredSongs = useMemo(() => {
-		const normalizedSearch = search.trim().toLowerCase();
-		if (!normalizedSearch) {
-			return [];
-		}
-
-		return collectionSongs.filter(song =>
-			song.title.toLowerCase().includes(normalizedSearch)
-			|| song.song_number.toString() === normalizedSearch
-			|| (song.sub_title || '').toLowerCase().includes(normalizedSearch)
-		);
-	}, [collectionSongs, search]);
+	const searchResults = useMemo<SearchResult<AppSong>[]>(
+		() => searchSongs(collectionSongs, search),
+		[collectionSongs, search]
+	);
+	const filteredSongs = useMemo(() => searchResults.map(result => result.song), [searchResults]);
 
 	const navigateToSong = (song: AppSong) => {
 		navigation.navigate('SongDetail', {
@@ -81,7 +75,9 @@ const SearchScreen = ({ navigation }) => {
 		});
 	};
 
-	const renderListItem = ({ item }: { item: AppSong }) => (
+	const renderListItem = ({ item: result }: { item: SearchResult<AppSong> }) => {
+		const item = result.song;
+		return (
 		<TouchableOpacity
 			style={styles.songCard}
 			activeOpacity={0.8}
@@ -98,6 +94,9 @@ const SearchScreen = ({ navigation }) => {
 					<Text style={styles.songSubtitle} numberOfLines={1}>
 						{item.collection_name} • {resolveLanguageLabel(item.language_code, item.language_label)}
 					</Text>
+					{result.matchType === 'lyrics' && result.snippet ? (
+						<Text style={styles.songSnippet} numberOfLines={2}>{result.snippet}</Text>
+					) : null}
 				</View>
 			</View>
 			<View style={styles.songCardRight}>
@@ -107,7 +106,8 @@ const SearchScreen = ({ navigation }) => {
 				<Icon name="chevron-forward" size={18} color="#b3b3b3" />
 			</View>
 		</TouchableOpacity>
-	);
+		);
+	};
 
 	return (
 		<SafeAreaView style={styles.container}>
@@ -136,9 +136,9 @@ const SearchScreen = ({ navigation }) => {
 				</View>
 			) : (
 				<FlatList
-					data={filteredSongs}
+					data={searchResults}
 					renderItem={renderListItem}
-					keyExtractor={(item) => item.song_id}
+					keyExtractor={(item) => item.song.song_id}
 					contentContainerStyle={styles.listContent}
 					ListHeaderComponent={
 						<Text style={styles.resultsText}>
@@ -250,6 +250,12 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		color: '#666666',
 		marginTop: 2,
+	},
+	songSnippet: {
+		fontSize: 13,
+		fontStyle: 'italic',
+		color: '#7a7a7a',
+		marginTop: 3,
 	},
 	emptyStateWrap: {
 		marginTop: 30,

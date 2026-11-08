@@ -7,11 +7,12 @@ import SongDetailScreen from './src/SongDetailScreen';
 import { NavigationContainer } from "@react-navigation/native";
 import SplashScreen from "./src/SplashScreen";
 import FavoriteSongsScreen from "./src/FavoriteSongsScreen";
+import SearchScreen from './src/SearchScreen';
 import RecentScreen from './src/RecentScreen';
 import CollectionsScreen from './src/CollectionsScreen';
-import { useKeepAwake } from 'expo-keep-awake';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AppStateProvider } from './src/appState';
+import { AppStateProvider, useAppState } from './src/appState';
+import LanguageChoiceScreen from './src/LanguageChoiceScreen';
 import { useTranslation } from 'react-i18next';
 import './src/i18n';
 
@@ -19,6 +20,7 @@ const RootStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const TAB_ROUTES = {
 	HOME: 'HomeTab',
+	SEARCH: 'SearchTab',
 	RECENT: 'RecentTab',
 	FAVORITES: 'FavoritesTab',
 	LIBRARY: 'LibraryTab',
@@ -65,6 +67,8 @@ const MainTabsNavigator = () => {
 					let iconName = 'ellipse-outline';
 					if (route.name === TAB_ROUTES.HOME) {
 						iconName = focused ? 'home' : 'home-outline';
+					} else if (route.name === TAB_ROUTES.SEARCH) {
+						iconName = focused ? 'search' : 'search-outline';
 					} else if (route.name === TAB_ROUTES.RECENT) {
 						iconName = focused ? 'time' : 'time-outline';
 					} else if (route.name === TAB_ROUTES.FAVORITES) {
@@ -86,29 +90,57 @@ const MainTabsNavigator = () => {
 			<Tab.Screen
 				name={TAB_ROUTES.HOME}
 				component={SongListScreen}
-				options={{ title: t('tabs.home') }}
+				options={{ title: t('tabs.home'), tabBarAccessibilityLabel: t('tabs.home') }}
+			/>
+			<Tab.Screen
+				name={TAB_ROUTES.SEARCH}
+				component={SearchScreen}
+				options={{ title: t('tabs.search'), tabBarAccessibilityLabel: t('tabs.search') }}
 			/>
 			<Tab.Screen
 				name={TAB_ROUTES.RECENT}
 				component={RecentScreen}
-				options={{ title: t('tabs.recent') }}
+				options={{ title: t('tabs.recent'), tabBarAccessibilityLabel: t('tabs.recent') }}
 			/>
 			<Tab.Screen
 				name={TAB_ROUTES.FAVORITES}
 				component={FavoriteSongsScreen}
-				options={{ title: t('tabs.favorites') }}
+				options={{ title: t('tabs.favorites'), tabBarAccessibilityLabel: t('tabs.favorites') }}
 			/>
 			<Tab.Screen
 				name={TAB_ROUTES.LIBRARY}
 				component={CollectionsScreen}
-				options={{ title: t('tabs.library') }}
+				options={{ title: t('tabs.library'), tabBarAccessibilityLabel: t('tabs.library') }}
 			/>
 		</Tab.Navigator>
 	);
 };
 
+const AppContent = () => {
+	const { needsLanguageChoice } = useAppState();
+
+	if (needsLanguageChoice === null) {
+		return <SplashScreen />;
+	}
+	if (needsLanguageChoice) {
+		return <LanguageChoiceScreen />;
+	}
+
+	return (
+		<NavigationContainer>
+			<RootStack.Navigator screenOptions={stackScreenOptions}>
+				<RootStack.Screen
+					name="MainTabs"
+					component={MainTabsNavigator}
+					options={{ headerShown: false }}
+				/>
+				<RootStack.Screen name="SongDetail" component={SongDetailScreen} />
+			</RootStack.Navigator>
+		</NavigationContainer>
+	);
+};
+
 export default function App() {
-	useKeepAwake();
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
@@ -125,16 +157,7 @@ export default function App() {
 
 	return (
 		<AppStateProvider>
-			<NavigationContainer>
-				<RootStack.Navigator screenOptions={stackScreenOptions}>
-					<RootStack.Screen
-						name="MainTabs"
-						component={MainTabsNavigator}
-						options={{ headerShown: false }}
-					/>
-					<RootStack.Screen name="SongDetail" component={SongDetailScreen} />
-				</RootStack.Navigator>
-			</NavigationContainer>
+			<AppContent />
 		</AppStateProvider>
 	);
 }

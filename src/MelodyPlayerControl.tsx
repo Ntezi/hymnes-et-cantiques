@@ -9,6 +9,15 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
+import { LYRIC_SYNC_STEP_MS } from './settings';
+
+interface FollowAlongControl {
+	enabled: boolean;
+	// Positive = words change colour later.
+	syncOffsetMs: number;
+	onToggle: () => void;
+	onNudge: (deltaMs: number) => void;
+}
 
 interface MelodyPlayerControlProps {
 	isReady: boolean;
@@ -23,6 +32,8 @@ interface MelodyPlayerControlProps {
 	onStop: () => void;
 	onSeek: (positionMs: number) => void;
 	onRetryLoad: () => void;
+	// Only passed for hymns that have word timing.
+	followAlong?: FollowAlongControl;
 }
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
@@ -32,6 +43,13 @@ const formatDuration = (valueMs: number) => {
 	const minutes = Math.floor(totalSeconds / 60);
 	const seconds = totalSeconds % 60;
 	return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+const formatSyncOffset = (offsetMs: number) => {
+	if (offsetMs === 0) {
+		return '0 s';
+	}
+	return `${offsetMs > 0 ? '+' : '−'}${(Math.abs(offsetMs) / 1000).toFixed(2)} s`;
 };
 
 const MelodyPlayerControl = ({
@@ -47,6 +65,7 @@ const MelodyPlayerControl = ({
 	onStop,
 	onSeek,
 	onRetryLoad,
+	followAlong,
 }: MelodyPlayerControlProps) => {
 	const { t } = useTranslation();
 	const [seekTrackWidth, setSeekTrackWidth] = useState(0);
@@ -101,7 +120,12 @@ const MelodyPlayerControl = ({
 			{errorMessage ? (
 				<View style={styles.errorWrap}>
 					<Text style={styles.errorText}>{errorMessage}</Text>
-					<TouchableOpacity style={styles.retryButton} onPress={onRetryLoad}>
+					<TouchableOpacity
+						style={styles.retryButton}
+						onPress={onRetryLoad}
+						accessibilityRole="button"
+						accessibilityLabel={t('common.retry')}
+					>
 						<Text style={styles.retryButtonText}>{t('common.retry')}</Text>
 					</TouchableOpacity>
 				</View>
@@ -116,10 +140,24 @@ const MelodyPlayerControl = ({
 				activeOpacity={0.85}
 				onPress={onTrackPress}
 				onLayout={onTrackLayout}
-				style={styles.seekTrack}
+				style={styles.seekHitArea}
 				disabled={!isReady}
+				accessibilityRole="adjustable"
+				accessibilityLabel={t('melody.seek')}
+				accessibilityValue={{ min: 0, max: 100, now: Math.round(progressRatio * 100) }}
+				accessibilityState={{ disabled: !isReady }}
+				accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+				onAccessibilityAction={(event) => {
+					if (event.nativeEvent.actionName === 'increment') {
+						onSeek(Math.min(durationMs || positionMs + 10_000, positionMs + 10_000));
+					} else if (event.nativeEvent.actionName === 'decrement') {
+						onSeek(Math.max(0, positionMs - 10_000));
+					}
+				}}
 			>
-				<View style={[styles.seekFill, { width: `${progressRatio * 100}%` }]} />
+				<View pointerEvents="none" style={styles.seekTrack}>
+					<View style={[styles.seekFill, { width: `${progressRatio * 100}%` }]} />
+				</View>
 			</TouchableOpacity>
 
 			<View style={styles.controlsRow}>
@@ -127,6 +165,9 @@ const MelodyPlayerControl = ({
 					style={[styles.iconButton, !isReady && styles.iconButtonDisabled]}
 					disabled={!isReady}
 					onPress={() => onSeek(Math.max(0, positionMs - 10_000))}
+					accessibilityRole="button"
+					accessibilityLabel={t('melody.back10')}
+					accessibilityState={{ disabled: !isReady }}
 				>
 					<Icon name="play-back" size={16} color={isReady ? '#6d3549' : '#b3b3b3'} />
 				</TouchableOpacity>
@@ -135,6 +176,9 @@ const MelodyPlayerControl = ({
 					style={[styles.playButton, (!isReady || isLoading) && styles.playButtonDisabled]}
 					disabled={!isReady || isLoading}
 					onPress={onTogglePlayPause}
+					accessibilityRole="button"
+					accessibilityLabel={isPlaying ? t('melody.pause') : t('melody.play')}
+					accessibilityState={{ disabled: !isReady || isLoading }}
 				>
 					<Icon
 						name={isPlaying ? 'pause' : 'play'}
@@ -147,6 +191,9 @@ const MelodyPlayerControl = ({
 					style={[styles.iconButton, !isReady && styles.iconButtonDisabled]}
 					disabled={!isReady}
 					onPress={() => onSeek(Math.min(durationMs || positionMs + 10_000, positionMs + 10_000))}
+					accessibilityRole="button"
+					accessibilityLabel={t('melody.forward10')}
+					accessibilityState={{ disabled: !isReady }}
 				>
 					<Icon name="play-forward" size={16} color={isReady ? '#6d3549' : '#b3b3b3'} />
 				</TouchableOpacity>
@@ -155,10 +202,61 @@ const MelodyPlayerControl = ({
 					style={[styles.stopButton, !isReady && styles.iconButtonDisabled]}
 					disabled={!isReady}
 					onPress={onStop}
+					accessibilityRole="button"
+					accessibilityLabel={t('melody.stop')}
+					accessibilityState={{ disabled: !isReady }}
 				>
 					<Text style={[styles.stopText, !isReady && styles.stopTextDisabled]}>{t('melody.stop')}</Text>
 				</TouchableOpacity>
 			</View>
+
+			{followAlong ? (
+				<View style={styles.followRow}>
+					<TouchableOpacity
+						style={[styles.followToggle, followAlong.enabled && styles.followToggleOn]}
+						onPress={followAlong.onToggle}
+						accessibilityRole="switch"
+						accessibilityLabel={t('melody.followAlong')}
+						accessibilityState={{ checked: followAlong.enabled }}
+					>
+						<Icon
+							name={followAlong.enabled ? 'checkbox' : 'square-outline'}
+							size={16}
+							color={followAlong.enabled ? '#ffffff' : '#6d3549'}
+						/>
+						<Text style={[styles.followToggleText, followAlong.enabled && styles.followToggleTextOn]}>
+							{t('melody.followAlong')}
+						</Text>
+					</TouchableOpacity>
+					{followAlong.enabled ? (
+						<View style={styles.nudgeWrap}>
+							<TouchableOpacity
+								style={styles.nudgeButton}
+								onPress={() => followAlong.onNudge(-LYRIC_SYNC_STEP_MS)}
+								accessibilityRole="button"
+								accessibilityLabel={t('melody.syncEarlier')}
+							>
+								<Text style={styles.nudgeButtonText}>−</Text>
+							</TouchableOpacity>
+							<Text
+								style={styles.nudgeValue}
+								accessibilityLabel={`${t('melody.syncTitle')}: ${formatSyncOffset(followAlong.syncOffsetMs)}`}
+								accessibilityLiveRegion="polite"
+							>
+								{formatSyncOffset(followAlong.syncOffsetMs)}
+							</Text>
+							<TouchableOpacity
+								style={styles.nudgeButton}
+								onPress={() => followAlong.onNudge(LYRIC_SYNC_STEP_MS)}
+								accessibilityRole="button"
+								accessibilityLabel={t('melody.syncLater')}
+							>
+								<Text style={styles.nudgeButtonText}>+</Text>
+							</TouchableOpacity>
+						</View>
+					) : null}
+				</View>
+			) : null}
 		</View>
 	);
 };
@@ -216,6 +314,8 @@ const styles = StyleSheet.create({
 		color: '#8a314c',
 	},
 	retryButton: {
+		minHeight: 44,
+		justifyContent: 'center',
 		marginTop: 8,
 		alignSelf: 'flex-start',
 		paddingHorizontal: 10,
@@ -238,8 +338,12 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: '#7a7a7a',
 	},
+	seekHitArea: {
+		// 44px tall touch area around the 8px bar; negative margins keep the old layout.
+		marginTop: -12,
+		paddingVertical: 18,
+	},
 	seekTrack: {
-		marginTop: 6,
 		height: 8,
 		borderRadius: 999,
 		backgroundColor: '#f0d9e2',
@@ -250,15 +354,15 @@ const styles = StyleSheet.create({
 		backgroundColor: '#6d3549',
 	},
 	controlsRow: {
-		marginTop: 12,
+		marginTop: -6,
 		flexDirection: 'row',
 		alignItems: 'center',
 		justifyContent: 'space-between',
 	},
 	iconButton: {
-		width: 34,
-		height: 34,
-		borderRadius: 17,
+		width: 44,
+		height: 44,
+		borderRadius: 22,
 		backgroundColor: '#fdf2f6',
 		borderWidth: 1,
 		borderColor: '#f5d6e1',
@@ -281,6 +385,8 @@ const styles = StyleSheet.create({
 		backgroundColor: '#c792a5',
 	},
 	stopButton: {
+		minHeight: 44,
+		justifyContent: 'center',
 		paddingHorizontal: 11,
 		paddingVertical: 8,
 		borderRadius: 10,
@@ -295,6 +401,65 @@ const styles = StyleSheet.create({
 	},
 	stopTextDisabled: {
 		color: '#b3b3b3',
+	},
+	followRow: {
+		marginTop: 10,
+		paddingTop: 8,
+		borderTopWidth: 1,
+		borderTopColor: '#f0e4ea',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		flexWrap: 'wrap',
+	},
+	followToggle: {
+		minHeight: 44,
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 12,
+		borderRadius: 999,
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		backgroundColor: '#fdf2f6',
+	},
+	followToggleOn: {
+		backgroundColor: '#6d3549',
+		borderColor: '#6d3549',
+	},
+	followToggleText: {
+		marginLeft: 6,
+		fontSize: 12,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
+	followToggleTextOn: {
+		color: '#ffffff',
+	},
+	nudgeWrap: {
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	nudgeButton: {
+		width: 44,
+		height: 44,
+		borderRadius: 22,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	nudgeButtonText: {
+		fontSize: 18,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
+	nudgeValue: {
+		minWidth: 64,
+		textAlign: 'center',
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#6d3549',
 	},
 });
 

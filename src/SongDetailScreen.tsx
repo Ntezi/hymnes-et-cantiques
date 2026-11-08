@@ -1,16 +1,45 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+	View,
+	Text,
+	StyleSheet,
+	ScrollView,
+	TouchableOpacity,
+	useWindowDimensions,
+	InteractionManager,
+	NativeScrollEvent,
+	NativeSyntheticEvent,
+} from 'react-native';
 import SafeAreaView from "react-native-safe-area-view";
+import {
+	HandlerStateChangeEvent,
+	PanGestureHandler,
+	PanGestureHandlerEventPayload,
+	State,
+} from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { AppSong, getAllSongs, getCollectionById } from './library';
 import { addRecentSongId } from './recentSongs';
 import AddToFavoriteSheet from './AddToFavoriteSheet';
 import SameMelodySheet from './SameMelodySheet';
 import { AVPlaybackStatusSuccess } from 'expo-av';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { StackActions } from '@react-navigation/native';
+import { getPopCountToSong } from './songNavigation';
 import MelodyPlayerControl from './MelodyPlayerControl';
-import HighlightedText from './HighlightedText';
-import { getActiveTimedLine, getActiveTimedLineKey, getSongMelodyMetadata } from './melodyMetadata';
-import { audioService } from './services/audioService';
+import KaraokeLyricLine from './KaraokeLyricLine';
+import { createKaraokeStore } from './karaokeStore';
+import { getTextNote } from './textNotes';
+import {
+	buildLineKey,
+	findActiveEventIndex,
+	getHymnTiming,
+} from './lyricTiming';
+import {
+	audioService,
+	FOLLOW_ALONG_POLL_INTERVAL_MS,
+	PLAYBACK_POLL_INTERVAL_MS,
+} from './services/audioService';
 import LanguageSwitchSheet from './LanguageSwitchSheet';
 import { getCrossLanguageSongIds } from './crossLanguageMap';
 import {
@@ -20,35 +49,38 @@ import {
 	loadFavoriteCategories,
 } from './favoriteCategories';
 import {
+	getDefaultSameMelodySongIds,
 	getSameMelodySongIds,
+	hasUserMelodyOverrides,
 	loadMelodyLinkMap,
+	resetUserMelodyOverrides,
 	setSameMelodySongIds,
 } from './melodyLinks';
 import { useTranslation } from 'react-i18next';
+import {
+	clampLyricsFontStep,
+	clampLyricSyncOffset,
+	getCachedLyricsFontStep,
+	LYRICS_FONT_SIZES,
+	loadLyricsFontStep,
+	loadLyricSyncOffset,
+	saveLyricsFontStep,
+	saveLyricSyncOffset,
+} from './settings';
 import { HE_C_AUDIO } from '../audio';
 
-const REPEAT_MARKER_SPLIT_REGEX = /(\((?:bis|ter|x\d+)\)|\bbis\b|\bter\b|\bx\d+\b|R:\/?)/gi;
-const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
-const VERSE_NUMBER_REGEX = /^(\d+)\.\s*(.*)$/;
-const WHITESPACE_SEGMENT_REGEX = /^\s+$/;
 const SHOW_MELODY_PLAYBACK = true;
-const ENABLE_LYRIC_HIGHLIGHTING = false;
-const LYRIC_SYNC_LEAD_MS = 0;
-
-const tokenizeLyricWords = (text: string): string[] =>
-	text
-		.split(REPEAT_MARKER_SPLIT_REGEX)
-		.filter(segment => segment.length > 0)
-		.flatMap((segment) => {
-			if (REPEAT_MARKER_REGEX.test(segment.trim())) {
-				return [];
-			}
-
-			return segment
-				.split(/\s+/)
-				.map(word => word.trim())
-				.filter(Boolean);
-		});
+// Auto-scroll stays off this long after the user scrolls by hand.
+const MANUAL_SCROLL_HOLD_MS = 4000;
+// Lyrics are re-checked at most this often while playing (about 25 Hz).
+const KARAOKE_TICK_MS = 40;
+const AUTO_SCROLL_TOP_MARGIN = 60;
+const AUTO_SCROLL_BOTTOM_MARGIN = 120;
+const AUTO_SCROLL_TARGET_OFFSET = 180;
+const SWIPE_MIN_DISTANCE = 60;
+const SWIPE_MIN_VELOCITY = 500;
+// Swipes that start this close to the left edge are left to the system back gesture (iOS).
+const SWIPE_LEFT_EDGE_GUARD = 24;
 
 const SongDetailScreen = ({ route, navigation }) => {
 	const { t } = useTranslation();
@@ -72,10 +104,10 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [favoriteCategories, setFavoriteCategories] = useState<FavoriteCategory[]>([]);
 	const [isFavoriteSheetVisible, setIsFavoriteSheetVisible] = useState(false);
 	const [sameMelodySongIds, setSameMelodySongIdsState] = useState<string[]>([]);
+	const [hasMelodyOverrides, setHasMelodyOverrides] = useState(false);
 	const [isSameMelodySheetVisible, setIsSameMelodySheetVisible] = useState(false);
 	const [isLanguageSheetVisible, setIsLanguageSheetVisible] = useState(false);
 	const [isMelodyControlVisible, setIsMelodyControlVisible] = useState(false);
-	const [melodyReloadKey, setMelodyReloadKey] = useState(0);
 	const [isMelodyLoading, setIsMelodyLoading] = useState(false);
 	const [melodyError, setMelodyError] = useState<string | null>(null);
 	const [playbackPositionMs, setPlaybackPositionMs] = useState(0);
@@ -83,13 +115,29 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isBuffering, setIsBuffering] = useState(false);
 	const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
+	const [fontStep, setFontStep] = useState(getCachedLyricsFontStep());
+	const audioOwnerId = useRef(`song-detail-${Math.random().toString(36).slice(2)}`).current;
+	const isMelodyLoadedRef = useRef(false);
+	const playbackEpochRef = useRef(0);
+	const playerPanRef = useRef<PanGestureHandler>(null);
 	const scrollViewRef = useRef<ScrollView | null>(null);
-	const lineOffsetMapRef = useRef<Record<string, number>>({});
-	const lastAutoScrollLineRef = useRef<string | null>(null);
-	const melodyMetadata = useMemo(
-		() => (SHOW_MELODY_PLAYBACK ? getSongMelodyMetadata(song_id) : null),
-		[song_id]
-	);
+	const lineLayoutRef = useRef<Record<string, { y: number; height: number }>>({});
+	const cardYRef = useRef<Record<number, number>>({});
+	const versesWrapYRef = useRef(0);
+	const scrollYRef = useRef(0);
+	const viewportHeightRef = useRef(0);
+	const manualScrollAtRef = useRef(0);
+	const programmaticScrollUntilRef = useRef(0);
+	// Last audio status position, with the time it arrived, so the position can be interpolated.
+	const clockRef = useRef({ positionMs: 0, at: 0, isPlaying: false });
+	const lastUiPositionRef = useRef(0);
+	const activeEventRef = useRef(-1);
+	const karaokeTimingRef = useRef<ReturnType<typeof getHymnTiming>>(null);
+	const syncOffsetRef = useRef(0);
+	const userNudgedRef = useRef(false);
+	const [followAlong, setFollowAlong] = useState(true);
+	const [syncOffsetMs, setSyncOffsetMs] = useState(0);
+	const karaokeStore = useMemo(createKaraokeStore, []);
 	const localAsset = useMemo(() => {
 		const numericSongNumber = Number(song_number);
 		if (Number.isFinite(numericSongNumber)) {
@@ -97,37 +145,24 @@ const SongDetailScreen = ({ route, navigation }) => {
 		}
 		return HE_C_AUDIO[String(song_number)] ?? null;
 	}, [song_number]);
-	const melodySourceUri = useMemo(
-		() => melodyMetadata?.melody_url?.trim() || null,
-		[melodyMetadata?.melody_url]
-	);
-	const hasMelodySource = Boolean(localAsset || melodySourceUri);
-	const shouldHighlightLyrics =
-		ENABLE_LYRIC_HIGHLIGHTING && hasPlaybackStarted && (isPlaying || playbackPositionMs > 0);
-	const lyricSyncPositionMs = useMemo(
-		() => Math.max(0, playbackPositionMs + LYRIC_SYNC_LEAD_MS),
-		[playbackPositionMs]
-	);
-	const activeLineKey = useMemo(
-		() => (
-			SHOW_MELODY_PLAYBACK && shouldHighlightLyrics
-				? getActiveTimedLineKey(song_id, lyricSyncPositionMs)
-				: null
-		),
-		[song_id, lyricSyncPositionMs, shouldHighlightLyrics]
-	);
-	const activeTimedLine = useMemo(
-		() => (
-			SHOW_MELODY_PLAYBACK && shouldHighlightLyrics
-				? getActiveTimedLine(song_id, lyricSyncPositionMs)
-				: null
-		),
-		[song_id, lyricSyncPositionMs, shouldHighlightLyrics]
-	);
-	const fallbackDurationMs = useMemo(
-		() => melodyMetadata?.timed_lines[melodyMetadata.timed_lines.length - 1]?.end_ms || 0,
-		[melodyMetadata]
-	);
+	const hasMelodySource = Boolean(localAsset);
+	const textNote = useMemo(() => getTextNote(collection_id, song_number), [collection_id, song_number]);
+	// The timing file is read after the open transition, never during render.
+	const [hymnTiming, setHymnTiming] = useState<ReturnType<typeof getHymnTiming>>(null);
+	useEffect(() => {
+		setHymnTiming(null);
+		if (!hasMelodySource) {
+			return undefined;
+		}
+		const task = InteractionManager.runAfterInteractions(() => {
+			setHymnTiming(getHymnTiming(song_number, collection_id));
+		});
+		return () => task.cancel();
+	}, [collection_id, song_number, hasMelodySource]);
+	const karaokeOn = followAlong && hymnTiming !== null;
+	const karaokeVisible = karaokeOn && hasPlaybackStarted;
+	karaokeTimingRef.current = karaokeVisible ? hymnTiming : null;
+	syncOffsetRef.current = syncOffsetMs;
 	const crossLanguageSongIds = useMemo(
 		() => getCrossLanguageSongIds(song_id),
 		[song_id]
@@ -139,11 +174,34 @@ const SongDetailScreen = ({ route, navigation }) => {
 				.filter((song): song is AppSong => Boolean(song)),
 		[crossLanguageSongIds, allSongs]
 	);
+	const lyricsFontSize = LYRICS_FONT_SIZES[fontStep];
+	const lyricFontStyles = useMemo(
+		() => ({
+			line: { lineHeight: Math.round(lyricsFontSize * 1.6) },
+			text: { fontSize: lyricsFontSize, lineHeight: Math.round(lyricsFontSize * 1.6) },
+			number: { fontSize: lyricsFontSize },
+			instructions: { fontSize: Math.max(12, lyricsFontSize - 2) },
+		}),
+		[lyricsFontSize]
+	);
 	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
-		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en' || languageCode === 'ee') {
 			return t(`languages.${languageCode}`);
 		}
 		return fallbackLabel;
+	};
+
+	useEffect(() => {
+		loadLyricsFontStep().then(setFontStep);
+	}, []);
+
+	const changeFontStep = (delta: number) => {
+		const nextStep = clampLyricsFontStep(fontStep + delta);
+		if (nextStep === fontStep) {
+			return;
+		}
+		setFontStep(nextStep);
+		saveLyricsFontStep(nextStep);
 	};
 
 	useEffect(() => {
@@ -153,130 +211,268 @@ const SongDetailScreen = ({ route, navigation }) => {
 				fontSize: 16,
 				fontWeight: '600',
 			},
-			headerRight: () => (
-				<TouchableOpacity
-					onPress={() => setIsLanguageSheetVisible(true)}
-					disabled={crossLanguageSongs.length === 0}
-					style={styles.languageHeaderButton}
-					activeOpacity={0.85}
-				>
-					<Icon
-						name={crossLanguageSongs.length > 0 ? 'globe' : 'globe-outline'}
-						size={18}
-						color={crossLanguageSongs.length > 0 ? '#ffffff' : '#d9d9d9'}
-					/>
-				</TouchableOpacity>
-			),
 		});
 
 		(async () => {
-			const [loadedCategories, melodyLinkMap] = await Promise.all([
-				loadFavoriteCategories(),
-				loadMelodyLinkMap(),
-			]);
+			const loadedCategories = await loadFavoriteCategories();
 			setFavoriteCategories(loadedCategories);
-			setSameMelodySongIdsState(getSameMelodySongIds(song_id, melodyLinkMap));
 			await addRecentSongId(song_id);
 		})();
-	}, [navigation, song_number, title, song_id, crossLanguageSongs.length]);
+	}, [navigation, song_number, title, song_id]);
+
+	// Links can change on a hymn pushed on top of this one (or by Reset), so reload them on
+	// every focus; otherwise Save here would write back stale links.
+	const refreshMelodyLinks = async () => {
+		const [melodyLinkMap, hasOverrides] = await Promise.all([
+			loadMelodyLinkMap(),
+			hasUserMelodyOverrides(),
+		]);
+		setHasMelodyOverrides(hasOverrides);
+		setSameMelodySongIdsState(getSameMelodySongIds(song_id, melodyLinkMap));
+	};
 
 	useEffect(() => {
-		if (!SHOW_MELODY_PLAYBACK) {
-			setIsMelodyLoading(false);
-			setMelodyError(null);
-			audioService.setStatusListener(null);
-			audioService.unloadAsync();
-			return;
-		}
+		refreshMelodyLinks();
+		return navigation.addListener('focus', refreshMelodyLinks);
+	}, [navigation, song_id]);
 
-		let isDisposed = false;
-		lineOffsetMapRef.current = {};
-		lastAutoScrollLineRef.current = null;
-		setIsLanguageSheetVisible(false);
-		setIsMelodyControlVisible(false);
+	// Audio is not loaded when the hymn opens. It loads on the first Play (see loadAndPlayMelody)
+	// and is released when the hymn changes, the screen loses focus or unmounts.
+	const resetPlaybackState = () => {
+		playbackEpochRef.current += 1;
+		isMelodyLoadedRef.current = false;
+		clockRef.current = { positionMs: 0, at: 0, isPlaying: false };
+		lastUiPositionRef.current = 0;
+		activeEventRef.current = -1;
+		karaokeStore.set(-1);
 		setPlaybackPositionMs(0);
 		setPlaybackDurationMs(0);
 		setIsPlaying(false);
 		setIsBuffering(false);
+		setIsMelodyLoading(false);
 		setHasPlaybackStarted(false);
 		setMelodyError(null);
+	};
 
-		const loadMelody = async () => {
-			audioService.setStatusListener((status) => {
-				if (isDisposed) {
-					return;
-				}
-				applyPlaybackStatus(status);
-			});
+	useEffect(() => {
+		lineLayoutRef.current = {};
+		cardYRef.current = {};
+		manualScrollAtRef.current = 0;
+		setIsLanguageSheetVisible(false);
+		setIsMelodyControlVisible(false);
+		resetPlaybackState();
 
-			if (!hasMelodySource) {
-				setIsMelodyLoading(false);
-				await audioService.unloadAsync();
+		return () => {
+			playbackEpochRef.current += 1;
+			audioService.unloadAsync(audioOwnerId);
+		};
+	}, [song_id, collection_id, audioOwnerId]);
+
+	useEffect(() => {
+		// Another hymn can be pushed on top of this one (same melody / translation): release the audio.
+		const unsubscribe = navigation.addListener('blur', () => {
+			audioService.unloadAsync(audioOwnerId);
+			resetPlaybackState();
+		});
+		return unsubscribe;
+	}, [navigation, audioOwnerId]);
+
+	// Keep the screen on while a hymn is open (people read along during worship), not app-wide.
+	// Released on blur and unmount. On web activation is async, so a release that runs first must
+	// be repeated once the request resolves, otherwise the lock is never freed.
+	useEffect(() => {
+		let wanted = false;
+		const activate = () => {
+			wanted = true;
+			activateKeepAwakeAsync(audioOwnerId)
+				.then(() => {
+					if (!wanted) {
+						deactivateKeepAwake(audioOwnerId).catch(() => undefined);
+					}
+				})
+				.catch(() => undefined);
+		};
+		const deactivate = () => {
+			wanted = false;
+			deactivateKeepAwake(audioOwnerId).catch(() => undefined);
+		};
+		activate();
+		const unsubscribeFocus = navigation.addListener('focus', activate);
+		const unsubscribeBlur = navigation.addListener('blur', deactivate);
+		return () => {
+			unsubscribeFocus();
+			unsubscribeBlur();
+			deactivate();
+		};
+	}, [navigation, audioOwnerId]);
+
+	// Position used for the colouring: last status position, advanced by the time since it arrived
+	// while playing, minus the user's sync nudge. Only re-renders when the active word changes.
+	const updateActiveEvent = () => {
+		const timing = karaokeTimingRef.current;
+		let next = -1;
+		if (timing) {
+			const clock = clockRef.current;
+			const positionMs =
+				clock.positionMs + (clock.isPlaying ? Date.now() - clock.at : 0) - syncOffsetRef.current;
+			next = findActiveEventIndex(timing.events, positionMs);
+		}
+		if (next !== activeEventRef.current) {
+			activeEventRef.current = next;
+			karaokeStore.set(next);
+		}
+	};
+
+	useEffect(() => {
+		updateActiveEvent();
+	}, [karaokeVisible, hymnTiming, syncOffsetMs]);
+
+	useEffect(() => {
+		if (!karaokeVisible || !isPlaying) {
+			return undefined;
+		}
+		// The store only notifies when the syllable changes; the loop itself runs at about 25 Hz.
+		let lastTick = 0;
+		let frame = requestAnimationFrame(function tick() {
+			const now = Date.now();
+			if (now - lastTick >= KARAOKE_TICK_MS) {
+				lastTick = now;
+				updateActiveEvent();
+			}
+			frame = requestAnimationFrame(tick);
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [karaokeVisible, isPlaying, hymnTiming]);
+
+	useEffect(() => {
+		if (isMelodyLoadedRef.current) {
+			audioService.setFollowAlongPollingAsync(karaokeOn).catch(() => undefined);
+		}
+	}, [karaokeOn]);
+
+	useEffect(() => {
+		let cancelled = false;
+		userNudgedRef.current = false;
+		setSyncOffsetMs(0);
+		loadLyricSyncOffset(collection_id, song_number).then((offset) => {
+			// A tap that came in before the stored value loaded wins.
+			if (!cancelled && !userNudgedRef.current) {
+				setSyncOffsetMs(offset);
+			}
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [collection_id, song_number]);
+
+	const onNudgeSync = (deltaMs: number) => {
+		userNudgedRef.current = true;
+		const next = clampLyricSyncOffset(syncOffsetMs + deltaMs);
+		setSyncOffsetMs(next);
+		saveLyricSyncOffset(collection_id, song_number, next);
+	};
+
+	// Scrolls when the sung line changes. Runs from the store, so it does not need a render.
+	useEffect(() => {
+		let lastLineKey: string | null = null;
+		const scrollToActiveLine = () => {
+			const event = hymnTiming?.events[karaokeStore.get()];
+			const activeLineKey = event ? buildLineKey(event[0], event[1]) : null;
+			if (activeLineKey === lastLineKey) {
+				return;
+			}
+			lastLineKey = activeLineKey;
+			if (!activeLineKey || Date.now() - manualScrollAtRef.current < MANUAL_SCROLL_HOLD_MS) {
 				return;
 			}
 
-			setIsMelodyLoading(true);
-			try {
-				const source = localAsset ?? (melodySourceUri ? { uri: melodySourceUri } : null);
-				if (!source) {
-					throw new Error('No audio source');
-				}
-
-				console.log(`Loading melody for song ${song_number}, source:`, source);
-				const initialStatus = await audioService.loadAsync(source as any, false);
-				if (!isDisposed && initialStatus.isLoaded) {
-					applyPlaybackStatus(initialStatus);
-					console.log(`Melody loaded successfully for song ${song_number}`);
-				}
-				if (!isDisposed && !initialStatus.isLoaded) {
-					console.error(`Failed to load melody for song ${song_number}: status not loaded`);
-					setMelodyError(t('songDetail.unableToLoadMelody'));
-				}
-			} catch (err) {
-				console.error(`Error loading melody for song ${song_number}:`, err);
-				if (!isDisposed) {
-					setMelodyError(t('songDetail.unableToLoadMelody'));
-				}
-			} finally {
-				if (!isDisposed) {
-					setIsMelodyLoading(false);
-				}
+			const layout = lineLayoutRef.current[activeLineKey];
+			const cardY = cardYRef.current[Number(activeLineKey.split('-')[0])];
+			if (!layout || typeof cardY !== 'number') {
+				return;
 			}
+
+			const top = versesWrapYRef.current + cardY + layout.y;
+			const bottom = top + layout.height;
+			const viewTop = scrollYRef.current;
+			const viewBottom = viewTop + viewportHeightRef.current;
+			if (
+				viewportHeightRef.current > 0 &&
+				top >= viewTop + AUTO_SCROLL_TOP_MARGIN &&
+				bottom <= viewBottom - AUTO_SCROLL_BOTTOM_MARGIN
+			) {
+				return;
+			}
+
+			programmaticScrollUntilRef.current = Date.now() + 500;
+			scrollViewRef.current?.scrollTo({
+				y: Math.max(0, top - AUTO_SCROLL_TARGET_OFFSET),
+				animated: true,
+			});
 		};
+		return karaokeStore.subscribe(scrollToActiveLine);
+	}, [hymnTiming, karaokeStore]);
 
-		loadMelody();
-
-		return () => {
-			isDisposed = true;
-			audioService.setStatusListener(null);
-			audioService.unloadAsync();
-		};
-	}, [song_id, song_number, collection_id, hasMelodySource, localAsset, melodySourceUri, melodyReloadKey, t]);
-
-	useEffect(() => {
-		if (!activeLineKey || lastAutoScrollLineRef.current === activeLineKey) {
-			return;
+	const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+		const y = event.nativeEvent.contentOffset.y;
+		const now = Date.now();
+		if (now < programmaticScrollUntilRef.current) {
+			// Our own animated scroll is still moving.
+			programmaticScrollUntilRef.current = now + 200;
+		} else if (y !== scrollYRef.current) {
+			manualScrollAtRef.current = now;
 		}
+		scrollYRef.current = y;
+	};
 
-		const lineY = lineOffsetMapRef.current[activeLineKey];
-		if (typeof lineY !== 'number') {
-			return;
-		}
+	const onLineLayout = useCallback((lineKey: string, y: number, height: number) => {
+		lineLayoutRef.current[lineKey] = { y, height };
+	}, []);
 
-		lastAutoScrollLineRef.current = activeLineKey;
-		scrollViewRef.current?.scrollTo({
-			y: Math.max(0, lineY - 180),
-			animated: true,
-		});
-	}, [activeLineKey]);
+	// Memoised so the screen's own re-renders (seek bar, buttons) do not rebuild every line.
+	const lyricsBody = useMemo(
+		() =>
+			verses.map((verse, index) => {
+				const lines = verse.split('\n').map(line => line.trim()).filter(Boolean);
+				const isRefrain = lines.some(line => line.includes('R:/'));
+
+				return (
+					<View
+						key={index}
+						style={[styles.verseCard, isRefrain && styles.refrainCard]}
+						onLayout={(event) => {
+							cardYRef.current[index] = event.nativeEvent.layout.y;
+						}}
+					>
+						{lines.map((line, lineIndex) => {
+							const lineKey = buildLineKey(index, lineIndex);
+							return (
+								<KaraokeLyricLine
+									key={lineKey}
+									line={line}
+									lineKey={lineKey}
+									timing={hymnTiming}
+									store={karaokeStore}
+									fontStyles={lyricFontStyles}
+									onLineLayout={onLineLayout}
+								/>
+							);
+						})}
+					</View>
+				);
+			}),
+		[verses, hymnTiming, karaokeStore, lyricFontStyles, onLineLayout]
+	);
 
 	const isFavorite = useMemo(
 		() => isSongInAnyFavoriteCategory(favoriteCategories, song_id),
 		[favoriteCategories, song_id]
 	);
 
-	const songCategoryCount = useMemo(
-		() => getSongFavoriteCategories(favoriteCategories, song_id).length,
+	const songFavoriteCategoryNames = useMemo(
+		() => getSongFavoriteCategories(favoriteCategories, song_id)
+			.map(category => category.name)
+			.join(', '),
 		[favoriteCategories, song_id]
 	);
 
@@ -291,36 +487,95 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const currentIndex = songs.findIndex(song => song.song_id === song_id);
 	const previousSong = currentIndex > 0 ? songs[currentIndex - 1] : null;
 	const nextSong = currentIndex >= 0 && currentIndex < songs.length - 1 ? songs[currentIndex + 1] : null;
-	const effectiveDurationMs = playbackDurationMs || fallbackDurationMs;
+	const effectiveDurationMs = playbackDurationMs;
 	const isMelodyReady = hasMelodySource && !isMelodyLoading && !melodyError;
 
-	const navigateToSongDetail = (song: AppSong | null, songSequence: AppSong[] = songs) => {
+	// Prev/next replace the screen (they walk the current list). Same-melody and translation
+	// links push, so Back returns to the hymn the user came from.
+	const navigateToSongDetail = (
+		song: AppSong | null,
+		songSequence: AppSong[] = songs,
+		mode: 'replace' | 'push' = 'replace'
+	) => {
 		if (!song) {
 			return;
 		}
 
-		navigation.replace('SongDetail', {
-			...song,
-			songs: songSequence,
-		});
+		const params = { ...song, songs: songSequence };
+		if (mode === 'push') {
+			// Hopping between linked hymns must not grow the stack: go back to the copy already in it.
+			const state = navigation.getState();
+			const popCount = getPopCountToSong(state.routes, state.index, song.song_id);
+			if (popCount > 0) {
+				navigation.dispatch(StackActions.pop(popCount));
+				return;
+			}
+		}
+		navigation[mode]('SongDetail', params);
+	};
+
+	const isAnySheetVisible = isFavoriteSheetVisible || isSameMelodySheetVisible || isLanguageSheetVisible;
+
+	// Swipe left = next hymn, swipe right = previous hymn, in the list the user came from.
+	const onSwipeStateChange = (event: HandlerStateChangeEvent<PanGestureHandlerEventPayload>) => {
+		const { state, oldState, translationX, velocityX, x } = event.nativeEvent;
+		if (state !== State.END || oldState !== State.ACTIVE) {
+			return;
+		}
+		if (x - translationX < SWIPE_LEFT_EDGE_GUARD) {
+			return;
+		}
+
+		const isFarEnough = Math.abs(translationX) >= SWIPE_MIN_DISTANCE;
+		const isFastEnough = Math.abs(velocityX) >= SWIPE_MIN_VELOCITY && Math.abs(translationX) >= SWIPE_MIN_DISTANCE / 2;
+		if (!isFarEnough && !isFastEnough) {
+			return;
+		}
+
+		navigateToSongDetail(translationX < 0 ? nextSong : previousSong);
 	};
 
 	const onSelectCrossLanguageSong = (song: AppSong) => {
 		setIsLanguageSheetVisible(false);
 		navigateToSongDetail(
 			song,
-			getCollectionById(song.collection_id)?.songs || [song]
+			getCollectionById(song.collection_id)?.songs || [song],
+			'push'
 		);
 	};
 
+	// If storage fails the sheet stays open and the lists are re-read, so the UI matches what is stored.
 	const saveSameMelodySongs = async (linkedSongIds: string[]) => {
-		const updatedLinkMap = await setSameMelodySongIds(song_id, linkedSongIds);
-		setSameMelodySongIdsState(getSameMelodySongIds(song_id, updatedLinkMap));
-		setIsSameMelodySheetVisible(false);
+		try {
+			await setSameMelodySongIds(song_id, linkedSongIds);
+			await refreshMelodyLinks();
+			setIsSameMelodySheetVisible(false);
+		} catch (err) {
+			console.error('Unable to save same-melody links:', err);
+			refreshMelodyLinks().catch(() => undefined);
+		}
+	};
+
+	const resetSameMelodyChanges = async () => {
+		try {
+			await resetUserMelodyOverrides();
+			await refreshMelodyLinks();
+			setIsSameMelodySheetVisible(false);
+		} catch (err) {
+			console.error('Unable to reset same-melody links:', err);
+			refreshMelodyLinks().catch(() => undefined);
+		}
 	};
 
 	const applyPlaybackStatus = (status: AVPlaybackStatusSuccess) => {
-		setPlaybackPositionMs(status.positionMillis || 0);
+		const positionMs = status.positionMillis || 0;
+		clockRef.current = { positionMs, at: Date.now(), isPlaying: Boolean(status.isPlaying) };
+		// The screen state only needs the slower seek-bar rate; the lyrics read clockRef.
+		if (!status.isPlaying || Math.abs(positionMs - lastUiPositionRef.current) >= PLAYBACK_POLL_INTERVAL_MS - 50) {
+			lastUiPositionRef.current = positionMs;
+			setPlaybackPositionMs(positionMs);
+		}
+		updateActiveEvent();
 		setPlaybackDurationMs(status.durationMillis || 0);
 		setIsPlaying(Boolean(status.isPlaying));
 		setIsBuffering(Boolean(status.isBuffering));
@@ -329,19 +584,61 @@ const SongDetailScreen = ({ route, navigation }) => {
 		}
 	};
 
+	const loadAndPlayMelody = async () => {
+		if (!localAsset) {
+			return;
+		}
+
+		const epoch = playbackEpochRef.current;
+		setIsMelodyLoading(true);
+		try {
+			const initialStatus = await audioService.loadAsync(
+				localAsset,
+				true,
+				audioOwnerId,
+				(status) => {
+					if (epoch === playbackEpochRef.current) {
+						applyPlaybackStatus(status);
+					}
+				},
+				karaokeOn ? FOLLOW_ALONG_POLL_INTERVAL_MS : PLAYBACK_POLL_INTERVAL_MS,
+				// The hymn may have been left while this load was queued: then do not start playback.
+				() => epoch === playbackEpochRef.current
+			);
+			if (epoch !== playbackEpochRef.current) {
+				return;
+			}
+			if (initialStatus.isLoaded) {
+				isMelodyLoadedRef.current = true;
+				setHasPlaybackStarted(true);
+				applyPlaybackStatus(initialStatus);
+			} else {
+				setMelodyError(t('songDetail.unableToLoadMelody'));
+			}
+		} catch (err) {
+			console.error(`Error loading melody for song ${song_number}:`, err);
+			if (epoch === playbackEpochRef.current) {
+				setMelodyError(t('songDetail.unableToLoadMelody'));
+			}
+		} finally {
+			if (epoch === playbackEpochRef.current) {
+				setIsMelodyLoading(false);
+			}
+		}
+	};
+
 	const onTogglePlayPause = async () => {
 		if (!hasMelodySource) {
-			console.log("onTogglePlayPause: No melody metadata or local asset");
 			return;
 		}
 
 		try {
 			setMelodyError(null);
 			if (isPlaying) {
-				console.log("onTogglePlayPause: Pausing");
 				await audioService.pauseAsync();
+			} else if (!isMelodyLoadedRef.current) {
+				await loadAndPlayMelody();
 			} else {
-				console.log("onTogglePlayPause: Playing");
 				setHasPlaybackStarted(true);
 				await audioService.playAsync();
 			}
@@ -356,6 +653,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 			await audioService.stopAsync();
 			setHasPlaybackStarted(false);
 			setPlaybackPositionMs(0);
+			clockRef.current = { positionMs: 0, at: Date.now(), isPlaying: false };
+			lastUiPositionRef.current = 0;
 		} catch {
 			setMelodyError(t('songDetail.unableToStopPlayback'));
 		}
@@ -363,6 +662,10 @@ const SongDetailScreen = ({ route, navigation }) => {
 
 	const onSeekPlayback = async (nextPositionMs: number) => {
 		try {
+			// Jump the lyrics now instead of waiting for the next status update.
+			manualScrollAtRef.current = 0;
+			clockRef.current = { ...clockRef.current, positionMs: nextPositionMs, at: Date.now() };
+			updateActiveEvent();
 			await audioService.seekToAsync(nextPositionMs);
 		} catch {
 			setMelodyError(t('songDetail.unableToSeek'));
@@ -370,210 +673,187 @@ const SongDetailScreen = ({ route, navigation }) => {
 	};
 
 	const onRetryMelodyLoad = () => {
-		setMelodyReloadKey((prev) => prev + 1);
+		setMelodyError(null);
+		isMelodyLoadedRef.current = false;
+		loadAndPlayMelody();
 	};
 
-	const getActiveWordIndexForLine = (
-		lineKey: string,
-		lineText: string,
-		isActiveLine: boolean
-	): number | null => {
-		if (!isActiveLine || !activeTimedLine || activeTimedLine.line_key !== lineKey) {
-			return null;
-		}
+	// Labels under the action icons only on wide screens; phones show icons only to save vertical space.
+	const { width: windowWidth } = useWindowDimensions();
+	const showActionLabels = windowWidth >= 600;
 
-		const words = tokenizeLyricWords(lineText);
-		if (words.length === 0) {
-			return null;
-		}
-
-		const lineDurationMs = Math.max(1, activeTimedLine.end_ms - activeTimedLine.start_ms);
-		const relativeProgress = Math.max(
-			0,
-			Math.min(0.9999, (lyricSyncPositionMs - activeTimedLine.start_ms) / lineDurationMs)
-		);
-
-		return Math.min(words.length - 1, Math.floor(relativeProgress * words.length));
-	};
-
-	const renderPatternAwareText = (
-		text: string,
-		lineKey: string,
-		isActiveLine: boolean,
-		activeWordIndex: number | null
-	) => {
-		let wordCursor = 0;
-
-		return text
-			.split(REPEAT_MARKER_SPLIT_REGEX)
-			.filter(segment => segment.length > 0)
-			.flatMap((segment, segmentIndex) => {
-				const isRepeatToken = REPEAT_MARKER_REGEX.test(segment.trim());
-				if (isRepeatToken) {
-					return [
-						<HighlightedText
-							key={`${lineKey}-repeat-${segmentIndex}`}
-							isActive={isActiveLine}
-							style={styles.singingInstructions}
-							activeStyle={styles.activeSingingInstructions}
-						>
-							{segment}
-						</HighlightedText>
-					];
-				}
-
-				return segment
-					.split(/(\s+)/)
-					.filter(token => token.length > 0)
-					.map((token, tokenIndex) => {
-						if (WHITESPACE_SEGMENT_REGEX.test(token)) {
-							return <Text key={`${lineKey}-space-${segmentIndex}-${tokenIndex}`}>{token}</Text>;
-						}
-
-						const currentWordIndex = wordCursor;
-						wordCursor += 1;
-						const isWordActive = isActiveLine && activeWordIndex === currentWordIndex;
-						const isLineFallbackActive = isActiveLine && activeWordIndex === null;
-
-						return (
-							<HighlightedText
-								key={`${lineKey}-word-${segmentIndex}-${tokenIndex}`}
-								isActive={isWordActive || isLineFallbackActive}
-								style={styles.verseText}
-								activeStyle={isWordActive ? styles.activeWordText : styles.activeVerseText}
-							>
-								{token}
-							</HighlightedText>
-						);
-					});
-			});
-	};
-
-	const renderLine = (line: string, lineKey: string) => {
-		const verseNumberMatch = line.match(VERSE_NUMBER_REGEX);
-		const verseNumber = verseNumberMatch?.[1];
-		const verseBody = verseNumberMatch ? verseNumberMatch[2] : line;
-		const content = verseBody;
-		const isActiveLine = activeLineKey === lineKey;
-		const activeWordIndex = getActiveWordIndexForLine(lineKey, content, isActiveLine);
-
-		return (
-			<View
-				key={lineKey}
-				onLayout={(event) => {
-					lineOffsetMapRef.current[lineKey] = event.nativeEvent.layout.y;
-				}}
-				style={[styles.verseLineWrap, isActiveLine && styles.activeVerseLineWrap]}
-			>
-				<Text style={styles.verseLine}>
-					{verseNumber ? (
-						<HighlightedText
-							style={styles.verseNumber}
-							activeStyle={styles.activeVerseNumber}
-							isActive={isActiveLine}
-						>
-							{verseNumber}.
-						</HighlightedText>
-					) : null}
-					{verseNumber && content.length > 0 ? ' ' : null}
-					{renderPatternAwareText(content, lineKey, isActiveLine, activeWordIndex)}
-				</Text>
+	const renderActionChip = ({
+		key,
+		icon,
+		label,
+		onPress,
+		active = false,
+		disabled = false,
+		badge,
+		textIcon,
+	}: {
+		key: string;
+		icon?: string;
+		textIcon?: string;
+		label: string;
+		onPress: () => void;
+		active?: boolean;
+		disabled?: boolean;
+		badge?: number;
+	}) => (
+		<TouchableOpacity
+			key={key}
+			style={[
+				styles.actionChip,
+				!showActionLabels && styles.actionChipCompact,
+				active && styles.actionChipActive,
+				disabled && styles.actionChipDisabled,
+			]}
+			onPress={onPress}
+			disabled={disabled}
+			activeOpacity={0.8}
+			accessibilityRole="button"
+			accessibilityLabel={badge ? `${label}, ${badge}` : label}
+			accessibilityState={{ disabled, selected: active }}
+		>
+			<View style={styles.actionIconWrap}>
+				{textIcon ? (
+					<Text style={[styles.actionTextIcon, active && styles.actionLabelActive, disabled && styles.actionLabelDisabled]}>{textIcon}</Text>
+				) : (
+					<Icon
+						name={icon || 'ellipse-outline'}
+						size={20}
+						color={disabled ? '#b3b3b3' : active ? '#ffffff' : '#6d3549'}
+					/>
+				)}
+				{badge ? (
+					<View style={[styles.actionBadge, active && styles.actionBadgeActive]}>
+						<Text style={[styles.actionBadgeText, active && styles.actionBadgeTextActive]}>{badge}</Text>
+					</View>
+				) : null}
 			</View>
-		);
-	};
+			{showActionLabels ? (
+				<Text
+					style={[
+						styles.actionLabel,
+						active && styles.actionLabelActive,
+						disabled && styles.actionLabelDisabled,
+					]}
+					numberOfLines={2}
+				>
+					{label}
+				</Text>
+			) : null}
+		</TouchableOpacity>
+	);
 
 	return (
 		<SafeAreaView style={styles.container}>
-				<ScrollView ref={scrollViewRef} contentContainerStyle={styles.contentContainer}>
+			<PanGestureHandler
+				enabled={!isAnySheetVisible && songs.length > 1}
+				activeOffsetX={[-30, 30]}
+				failOffsetY={[-20, 20]}
+				waitFor={playerPanRef}
+				onHandlerStateChange={onSwipeStateChange}
+			>
+			<View style={styles.swipeArea}>
+				<ScrollView
+						ref={scrollViewRef}
+						contentContainerStyle={styles.contentContainer}
+						scrollEventThrottle={16}
+						onScroll={onScroll}
+						onScrollBeginDrag={() => {
+							manualScrollAtRef.current = Date.now();
+						}}
+						onLayout={(event) => {
+							viewportHeightRef.current = event.nativeEvent.layout.height;
+						}}
+					>
 					<View style={styles.songHeaderCard}>
-						<TouchableOpacity
-							onPress={() => setIsSameMelodySheetVisible(true)}
-							style={styles.melodyHeaderButton}
-							activeOpacity={0.85}
-						>
-							<Icon
-								name={sameMelodySongs.length > 0 ? "musical-notes" : "musical-notes-outline"}
-								size={19}
-								color={sameMelodySongs.length > 0 ? '#6d3549' : '#8f4b5d'}
-							/>
-						</TouchableOpacity>
-
-						<TouchableOpacity
-							onPress={() => setIsFavoriteSheetVisible(true)}
-							style={styles.favoriteHeaderButton}
-							activeOpacity={0.85}
-						>
-							<Icon
-								name={isFavorite ? "heart" : "heart-outline"}
-								size={20}
-								color={isFavorite ? '#6d3549' : '#8f4b5d'}
-							/>
-						</TouchableOpacity>
-
-						<TouchableOpacity
-							onPress={() => setIsMelodyControlVisible((prev) => !prev)}
-							style={[
-								styles.audioHeaderButton,
-								!hasMelodySource && styles.audioHeaderButtonDisabled,
-							]}
-							activeOpacity={0.85}
-							disabled={!hasMelodySource}
-						>
-							<Icon
-								name={isMelodyControlVisible ? 'volume-high' : 'volume-medium-outline'}
-								size={19}
-								color={hasMelodySource ? '#6d3549' : '#b3b3b3'}
-							/>
-						</TouchableOpacity>
-
-						<View style={styles.songNumberBadge}>
-							<Text style={styles.songNumberBadgeText}>{song_number}</Text>
+						<View style={styles.songTitleRow}>
+							<View style={styles.songNumberBadge}>
+								<Text style={styles.songNumberBadgeText}>{song_number}</Text>
+							</View>
+							<View style={styles.songTitleText}>
+								<Text style={styles.songTitle}>{title}</Text>
+								{sub_title ? (
+									<Text style={[styles.songSubtitle, styles.songSubtitleItalic]} numberOfLines={1}>
+										{sub_title}
+									</Text>
+								) : null}
+							</View>
 						</View>
-					<Text style={styles.songTitle}>{title}</Text>
-					{sub_title ? (
-						<Text style={styles.songSubtitle}>{sub_title}</Text>
-					) : null}
-						{isFavorite ? (
-							<Text style={styles.favoriteSummaryText}>
-								{t('songDetail.inFavoriteCategories', {
-									count: songCategoryCount,
-									label: t('songDetail.favoriteCategory', { count: songCategoryCount }),
-								})}
-							</Text>
-						) : (
-						<Text style={styles.favoriteSummaryTextMuted}>
-							{t('songDetail.notInFavorites')}
-						</Text>
-					)}
-					{sameMelodySongs.length > 0 ? (
-						<Text style={styles.sameMelodySummaryText}>
-							{t('sameMelody.linkedCount', { count: sameMelodySongs.length })}
-						</Text>
-					) : null}
-					{crossLanguageSongs.length > 0 ? (
-						<Text style={styles.translationSummaryText}>
-							{t('languageSwitch.summary', {
-								languages: crossLanguageSongs
-									.map(song => resolveLanguageLabel(song.language_code, song.language_label))
-									.join(', '),
+						{isFavorite && songFavoriteCategoryNames ? (
+							<View style={styles.favoriteTagRow}>
+								<Icon name="heart" size={12} color="#6d3549" />
+								<Text style={styles.favoriteSummaryText} numberOfLines={2}>
+									{songFavoriteCategoryNames}
+								</Text>
+							</View>
+						) : null}
+
+						<View style={styles.actionRow}>
+							{SHOW_MELODY_PLAYBACK
+								? renderActionChip({
+									key: 'melody',
+									icon: isMelodyControlVisible ? 'volume-high' : 'volume-medium-outline',
+									label: t('songDetail.actionMelody'),
+									active: isMelodyControlVisible,
+									disabled: !hasMelodySource,
+									onPress: () => setIsMelodyControlVisible((prev) => !prev),
+								})
+								: null}
+							{renderActionChip({
+								key: 'same-melody',
+								icon: sameMelodySongs.length > 0 ? 'musical-notes' : 'musical-notes-outline',
+								label: t('songDetail.actionSameMelody'),
+								badge: sameMelodySongs.length,
+								onPress: () => setIsSameMelodySheetVisible(true),
 							})}
-						</Text>
-					) : null}
+							{renderActionChip({
+								key: 'favorite',
+								icon: isFavorite ? 'heart' : 'heart-outline',
+								label: t('songDetail.actionFavorite'),
+								active: isFavorite,
+								onPress: () => setIsFavoriteSheetVisible(true),
+							})}
+							{renderActionChip({
+								key: 'translations',
+								icon: crossLanguageSongs.length > 0 ? 'globe' : 'globe-outline',
+								label: t('songDetail.actionTranslations'),
+								badge: crossLanguageSongs.length,
+								disabled: crossLanguageSongs.length === 0,
+								onPress: () => setIsLanguageSheetVisible(true),
+							})}
+							<View style={styles.actionDivider} />
+							{renderActionChip({
+								key: 'font-smaller',
+								textIcon: 'A−',
+								label: t('songDetail.fontSmaller'),
+								disabled: fontStep === 0,
+								onPress: () => changeFontStep(-1),
+							})}
+							{renderActionChip({
+								key: 'font-larger',
+								textIcon: 'A+',
+								label: t('songDetail.fontLarger'),
+								disabled: fontStep === LYRICS_FONT_SIZES.length - 1,
+								onPress: () => changeFontStep(1),
+							})}
+						</View>
+					</View>
 
-					{/* <View style={styles.metadataRow}>
-						<View style={styles.metadataChip}>
-							<Text style={styles.metadataChipText}>{collection_name}</Text>
-						</View>
-						<View style={styles.metadataChip}>
-							<Text style={styles.metadataChipText}>{language_label}</Text>
-						</View>
-						<View style={styles.metadataChip}>
-							<Text style={styles.metadataChipText}>{song_type_label}</Text>
-						</View>
-					</View> */}
-				</View>
+				{textNote ? (
+					<View style={styles.textNoteRow}>
+						<Icon name="information-circle-outline" size={14} color="#8a6d3b" />
+						<Text style={styles.textNoteText}>{t(`textNotes.${textNote}`)}</Text>
+					</View>
+				) : null}
 
 				{SHOW_MELODY_PLAYBACK && isMelodyControlVisible ? (
+					// Claims horizontal drags that start in the player (seek bar) so they never change the hymn.
+					<PanGestureHandler ref={playerPanRef} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
+					<View>
 					<MelodyPlayerControl
 						isReady={isMelodyReady}
 						isLoading={isMelodyLoading}
@@ -582,31 +862,47 @@ const SongDetailScreen = ({ route, navigation }) => {
 						positionMs={playbackPositionMs}
 						durationMs={effectiveDurationMs}
 						errorMessage={melodyError}
-						sourceLabel={localAsset ? "Piano (Cantiquest)" : melodyMetadata?.source_label}
+						sourceLabel={"Piano (Cantiquest)"}
 						onTogglePlayPause={onTogglePlayPause}
 						onStop={onStopPlayback}
 						onSeek={onSeekPlayback}
+						followAlong={hymnTiming ? {
+							enabled: followAlong,
+							syncOffsetMs,
+							onToggle: () => setFollowAlong(prev => !prev),
+							onNudge: onNudgeSync,
+						} : undefined}
 						onRetryLoad={onRetryMelodyLoad}
 					/>
+					</View>
+					</PanGestureHandler>
 				) : null}
 
-					<View style={styles.versesWrap}>
-					{verses.map((verse, index) => {
-						const lines = verse.split('\n').map(line => line.trim()).filter(Boolean);
-						const isRefrain = lines.some(line => line.includes('R:/'));
-
-						return (
-							<View key={index} style={[styles.verseCard, isRefrain && styles.refrainCard]}>
-								{lines.map((line, lineIndex) => renderLine(line, `${index}-${lineIndex}`))}
-							</View>
-						);
-						})}
+					<View
+						style={styles.versesWrap}
+						onLayout={(event) => {
+							versesWrapYRef.current = event.nativeEvent.layout.y;
+						}}
+					>
+					{lyricsBody}
 					</View>
 
 				<View style={styles.sameMelodySection}>
 					<View style={styles.sameMelodyHeaderRow}>
-						<Icon name="musical-notes-outline" size={16} color="#6d3549" />
-						<Text style={styles.sameMelodyTitle}>{t('sameMelody.sectionTitle')}</Text>
+						<View style={styles.sameMelodyTitleWrap}>
+							<Icon name="musical-notes-outline" size={16} color="#6d3549" />
+							<Text style={styles.sameMelodyTitle}>{t('sameMelody.sectionTitle')}</Text>
+						</View>
+						<TouchableOpacity
+							style={styles.sameMelodyEditButton}
+							onPress={() => setIsSameMelodySheetVisible(true)}
+							activeOpacity={0.8}
+							accessibilityRole="button"
+							accessibilityLabel={`${t('common.edit')}: ${t('sameMelody.sectionTitle')}`}
+						>
+							<Icon name="create-outline" size={14} color="#6d3549" />
+							<Text style={styles.sameMelodyEditText}>{t('common.edit')}</Text>
+						</TouchableOpacity>
 					</View>
 					{sameMelodySongs.length === 0 ? (
 						<Text style={styles.sameMelodyEmptyText}>
@@ -617,10 +913,13 @@ const SongDetailScreen = ({ route, navigation }) => {
 							<TouchableOpacity
 								key={sameMelodySong.song_id}
 								style={styles.sameMelodyCard}
+								accessibilityRole="button"
+								accessibilityLabel={`${sameMelodySong.song_number}. ${sameMelodySong.title}`}
 								onPress={() =>
 									navigateToSongDetail(
 										sameMelodySong,
-										getCollectionById(sameMelodySong.collection_id)?.songs || [sameMelodySong]
+										getCollectionById(sameMelodySong.collection_id)?.songs || [sameMelodySong],
+										'push'
 									)
 								}
 							>
@@ -632,7 +931,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 										{sameMelodySong.title}
 									</Text>
 									<Text style={styles.sameMelodySongSubtitle} numberOfLines={1}>
-										{sameMelodySong.collection_name} • {resolveLanguageLabel(sameMelodySong.language_code, sameMelodySong.language_label)}
+										{sameMelodySong.sub_title
+											|| `${sameMelodySong.collection_name} • ${resolveLanguageLabel(sameMelodySong.language_code, sameMelodySong.language_label)}`}
 									</Text>
 								</View>
 								<Icon name="chevron-forward" size={18} color="#b3b3b3" />
@@ -645,6 +945,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 					<TouchableOpacity
 						style={[styles.navButton, !previousSong && styles.navButtonDisabled]}
 						disabled={!previousSong}
+						accessibilityRole="button"
+						accessibilityLabel={t('songDetail.previous')}
+						accessibilityState={{ disabled: !previousSong }}
 						onPress={() => navigateToSongDetail(previousSong)}
 					>
 						<Icon name="chevron-back" size={16} color={previousSong ? '#6d3549' : '#b3b3b3'} />
@@ -656,6 +959,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 					<TouchableOpacity
 						style={[styles.navButton, !nextSong && styles.navButtonDisabled]}
 						disabled={!nextSong}
+						accessibilityRole="button"
+						accessibilityLabel={t('songDetail.next')}
+						accessibilityState={{ disabled: !nextSong }}
 						onPress={() => navigateToSongDetail(nextSong)}
 					>
 						<Text style={[styles.navButtonText, !nextSong && styles.navButtonTextDisabled]}>
@@ -665,6 +971,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 					</TouchableOpacity>
 				</View>
 			</ScrollView>
+			</View>
+			</PanGestureHandler>
 			<LanguageSwitchSheet
 				visible={isLanguageSheetVisible}
 				currentSong={{
@@ -709,8 +1017,11 @@ const SongDetailScreen = ({ route, navigation }) => {
 				}}
 				allSongs={allSongs}
 				selectedSongIds={sameMelodySongIds}
+				defaultSongIds={getDefaultSameMelodySongIds(song_id)}
+				hasUserChanges={hasMelodyOverrides}
 				onClose={() => setIsSameMelodySheetVisible(false)}
 				onSave={saveSameMelodySongs}
+				onReset={resetSameMelodyChanges}
 			/>
 		</SafeAreaView>
 	);
@@ -721,86 +1032,170 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: '#fafafa',
 	},
+	swipeArea: {
+		flex: 1,
+	},
+	positionText: {
+		alignSelf: 'flex-end',
+		marginBottom: 6,
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#666666',
+	},
 	contentContainer: {
 		paddingHorizontal: 16,
 		paddingVertical: 14,
 		paddingBottom: 28,
+	},
+	textNoteRow: {
+		flexDirection: 'row',
+		alignItems: 'flex-start',
+		marginHorizontal: 4,
+		marginTop: -4,
+		marginBottom: 12,
+	},
+	textNoteText: {
+		flex: 1,
+		fontSize: 12,
+		lineHeight: 16,
+		color: '#8a6d3b',
+		marginLeft: 6,
 	},
 	songHeaderCard: {
 		backgroundColor: '#ffffff',
 		borderWidth: 1,
 		borderColor: '#e6e6e6',
 		borderRadius: 16,
-		paddingHorizontal: 16,
-		paddingVertical: 20,
-		paddingBottom: 28,
-		alignItems: 'center',
-		marginBottom: 14,
+		paddingHorizontal: 12,
+		paddingTop: 12,
+		paddingBottom: 10,
+		alignItems: 'stretch',
+		marginBottom: 12,
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 2 },
 		shadowOpacity: 0.07,
 		shadowRadius: 4,
 		elevation: 2,
 	},
-	languageHeaderButton: {
-		marginRight: 10,
-		width: 34,
-		height: 34,
-		borderRadius: 17,
+	favoriteTagRow: {
+		flexDirection: 'row',
 		alignItems: 'center',
+		alignSelf: 'flex-start',
+		marginTop: 8,
+		paddingHorizontal: 10,
+		paddingVertical: 5,
+		borderRadius: 999,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		maxWidth: '100%',
+	},
+	songTitleRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	songTitleText: {
+		flex: 1,
+		minWidth: 0,
+		marginLeft: 12,
+	},
+	songSubtitleItalic: {
+		fontStyle: 'italic',
+	},
+	actionDivider: {
+		width: 1,
+		alignSelf: 'stretch',
+		marginHorizontal: 3,
+		backgroundColor: '#f0e4ea',
+	},
+	actionChipCompact: {
+		minHeight: 44,
+		paddingVertical: 0,
 		justifyContent: 'center',
 	},
-	favoriteHeaderButton: {
-		position: 'absolute',
-		top: 10,
-		right: 10,
-		width: 36,
-		height: 36,
-		borderRadius: 18,
+	actionTextIcon: {
+		fontSize: 16,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
+	actionRow: {
+		flexDirection: 'row',
+		alignSelf: 'stretch',
+		marginTop: 10,
+		paddingTop: 10,
+		borderTopWidth: 1,
+		borderTopColor: '#f0e4ea',
+	},
+	actionChip: {
+		flex: 1,
+		marginHorizontal: 3,
+		paddingVertical: 8,
+		paddingHorizontal: 4,
+		borderRadius: 12,
 		backgroundColor: '#fdf2f6',
 		borderWidth: 1,
 		borderColor: '#f5d6e1',
 		alignItems: 'center',
-		justifyContent: 'center',
+		justifyContent: 'flex-start',
 	},
-	melodyHeaderButton: {
-		position: 'absolute',
-		top: 10,
-		left: 10,
-		width: 36,
-		height: 36,
-		borderRadius: 18,
-		backgroundColor: '#fdf2f6',
-		borderWidth: 1,
-		borderColor: '#f5d6e1',
-		alignItems: 'center',
-		justifyContent: 'center',
+	actionChipActive: {
+		backgroundColor: '#6d3549',
+		borderColor: '#6d3549',
 	},
-	audioHeaderButton: {
-		position: 'absolute',
-		bottom: 10,
-		left: 10,
-		width: 36,
-		height: 36,
-		borderRadius: 18,
-		backgroundColor: '#fdf2f6',
-		borderWidth: 1,
-		borderColor: '#f5d6e1',
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	audioHeaderButtonDisabled: {
-		borderColor: '#ececec',
+	actionChipDisabled: {
 		backgroundColor: '#f7f7f7',
+		borderColor: '#ececec',
+	},
+	actionIconWrap: {
+		width: 28,
+		height: 24,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	actionBadge: {
+		position: 'absolute',
+		top: -6,
+		right: -8,
+		minWidth: 16,
+		height: 16,
+		paddingHorizontal: 4,
+		borderRadius: 8,
+		backgroundColor: '#6d3549',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	actionBadgeActive: {
+		backgroundColor: '#ffffff',
+	},
+	actionBadgeText: {
+		fontSize: 10,
+		fontWeight: '700',
+		color: '#ffffff',
+	},
+	actionBadgeTextActive: {
+		color: '#6d3549',
+	},
+	actionLabel: {
+		marginTop: 4,
+		fontSize: 11,
+		lineHeight: 14,
+		fontWeight: '600',
+		color: '#6d3549',
+		textAlign: 'center',
+	},
+	actionLabelActive: {
+		color: '#ffffff',
+	},
+	actionLabelDisabled: {
+		color: '#b3b3b3',
 	},
 	songNumberBadge: {
-		width: 56,
-		height: 56,
-		borderRadius: 14,
+		width: 48,
+		height: 48,
+		borderRadius: 12,
 		backgroundColor: '#f5e0e9',
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginBottom: 12,
 	},
 	songNumberBadgeText: {
 		fontSize: 22,
@@ -808,43 +1203,22 @@ const styles = StyleSheet.create({
 		color: '#6d3549',
 	},
 	songTitle: {
-		fontSize: 22,
+		fontSize: 19,
 		fontWeight: '600',
 		color: '#1a1a1a',
-		textAlign: 'center',
-		lineHeight: 30,
+		lineHeight: 25,
 	},
 	songSubtitle: {
-		fontSize: 14,
-		fontStyle: 'italic',
+		fontSize: 13,
 		color: '#666666',
-		marginTop: 6,
-		textAlign: 'center',
+		marginTop: 2,
 	},
 	favoriteSummaryText: {
+		marginLeft: 5,
 		fontSize: 12,
 		fontWeight: '600',
 		color: '#6d3549',
-		marginTop: 10,
-	},
-	favoriteSummaryTextMuted: {
-		fontSize: 12,
-		fontWeight: '500',
-		color: '#999999',
-		marginTop: 10,
-	},
-	sameMelodySummaryText: {
-		fontSize: 12,
-		fontWeight: '600',
-		color: '#6d3549',
-		marginTop: 4,
-	},
-	translationSummaryText: {
-		fontSize: 12,
-		fontWeight: '600',
-		color: '#5f2539',
-		marginTop: 4,
-		textAlign: 'center',
+		flexShrink: 1,
 	},
 	metadataRow: {
 		flexDirection: 'row',
@@ -865,6 +1239,46 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: '#666666',
 	},
+	fontSizeRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		marginBottom: 6,
+	},
+	fontSizeLabel: {
+		fontSize: 13,
+		fontWeight: '600',
+		color: '#666666',
+	},
+	fontSizeButtons: {
+		flexDirection: 'row',
+	},
+	fontSizeButton: {
+		minWidth: 52,
+		height: 44,
+		marginLeft: 8,
+		borderRadius: 12,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	fontSizeButtonDisabled: {
+		backgroundColor: '#f7f7f7',
+		borderColor: '#ececec',
+	},
+	fontSizeButtonText: {
+		fontSize: 17,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
+	fontSizeButtonTextSmall: {
+		fontSize: 14,
+	},
+	fontSizeButtonTextDisabled: {
+		color: '#b3b3b3',
+	},
 	versesWrap: {
 		marginTop: 2,
 	},
@@ -881,55 +1295,6 @@ const styles = StyleSheet.create({
 		backgroundColor: '#fdf8fb',
 		borderColor: '#f5e0e9',
 	},
-	verseLine: {
-		marginBottom: 0,
-		lineHeight: 29,
-	},
-	verseLineWrap: {
-		marginBottom: 5,
-		borderRadius: 8,
-		paddingHorizontal: 6,
-		paddingVertical: 1,
-	},
-	activeVerseLineWrap: {
-		backgroundColor: '#fdf0f6',
-		borderWidth: 1,
-		borderColor: '#efc2d2',
-	},
-	verseText: {
-		fontSize: 18,
-		color: '#333333',
-		fontFamily: 'serif',
-		lineHeight: 29,
-	},
-	activeVerseText: {
-		color: '#5f2539',
-		fontWeight: '700',
-	},
-	activeWordText: {
-		color: '#4b1b2b',
-		fontWeight: '800',
-		backgroundColor: '#f6cada',
-	},
-	verseNumber: {
-		fontSize: 17,
-		fontWeight: '700',
-		color: '#6d3549',
-	},
-	activeVerseNumber: {
-		color: '#5f2539',
-	},
-	singingInstructions: {
-		fontSize: 15,
-		fontWeight: '700',
-		fontStyle: 'italic',
-		color: '#6d3549',
-		backgroundColor: '#fce6ee',
-	},
-	activeSingingInstructions: {
-		color: '#5f2539',
-		backgroundColor: '#f6cada',
-	},
 	songNavRow: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
@@ -942,7 +1307,30 @@ const styles = StyleSheet.create({
 	sameMelodyHeaderRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
+		justifyContent: 'space-between',
 		marginBottom: 8,
+	},
+	sameMelodyTitleWrap: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		flex: 1,
+	},
+	sameMelodyEditButton: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		minHeight: 44,
+		paddingHorizontal: 10,
+		paddingVertical: 6,
+		borderRadius: 999,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+	},
+	sameMelodyEditText: {
+		marginLeft: 4,
+		fontSize: 12,
+		fontWeight: '700',
+		color: '#6d3549',
 	},
 	sameMelodyTitle: {
 		fontSize: 14,
@@ -1003,6 +1391,7 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		alignItems: 'center',
 		minWidth: 122,
+		minHeight: 44,
 		justifyContent: 'center',
 	},
 	navButtonDisabled: {

@@ -28,7 +28,7 @@ const FavoriteSongsScreen = ({ navigation }) => {
 	const [managedCategory, setManagedCategory] = useState<FavoriteCategory | null>(null);
 	const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([]);
 	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
-		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en' || languageCode === 'ee') {
 			return t(`languages.${languageCode}`);
 		}
 		return fallbackLabel;

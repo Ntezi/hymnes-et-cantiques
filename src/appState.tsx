@@ -7,16 +7,27 @@ import { DEFAULT_COLLECTION_ID, getCollections } from './library';
 const SELECTED_COLLECTION_KEY = 'app_selected_collection_id';
 const UI_LANGUAGE_KEY = 'app_ui_language';
 
-const SUPPORTED_UI_LANGUAGES = ['rw', 'fr', 'en'] as const;
+const SUPPORTED_UI_LANGUAGES = ['rw', 'fr', 'en', 'ee'] as const;
 export type UiLanguageCode = (typeof SUPPORTED_UI_LANGUAGES)[number];
 
-const resolveDefaultUiLanguage = (): UiLanguageCode => {
+// Default hymn collection for each language offered by the first-run picker.
+export const COLLECTION_BY_UI_LANGUAGE: Record<UiLanguageCode, string> = {
+	rw: 'hymnes-rw',
+	fr: 'hymnes-fr',
+	en: 'hymnes-en',
+	ee: 'hymnes-ee',
+};
+
+export const resolveDefaultUiLanguage = (): UiLanguageCode => {
 	const localeLanguage = Localization.getLocales()?.[0]?.languageCode?.toLowerCase() || 'en';
 	if (localeLanguage === 'rw') {
 		return 'rw';
 	}
 	if (localeLanguage === 'fr') {
 		return 'fr';
+	}
+	if (localeLanguage === 'ee') {
+		return 'ee';
 	}
 	return 'en';
 };
@@ -26,6 +37,9 @@ interface AppStateContextType {
 	setSelectedCollectionId: (collectionId: string) => void;
 	uiLanguage: UiLanguageCode;
 	setUiLanguage: (language: UiLanguageCode) => void;
+	// null until storage has been read; true on a fresh install (nothing stored yet).
+	needsLanguageChoice: boolean | null;
+	completeLanguageChoice: (language: UiLanguageCode) => void;
 }
 
 const AppStateContext = createContext<AppStateContextType | undefined>(undefined);
@@ -36,6 +50,7 @@ export const AppStateProvider = ({ children }: { children: React.ReactNode }) =>
 	const defaultUiLanguage = useMemo(resolveDefaultUiLanguage, []);
 	const [selectedCollectionId, setSelectedCollectionIdState] = useState(fallbackCollectionId);
 	const [uiLanguage, setUiLanguageState] = useState<UiLanguageCode>(defaultUiLanguage);
+	const [needsLanguageChoice, setNeedsLanguageChoice] = useState<boolean | null>(null);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -49,6 +64,15 @@ export const AppStateProvider = ({ children }: { children: React.ReactNode }) =>
 				if (!isMounted) {
 					return;
 				}
+
+				// Nothing stored: first run. Nothing is written until the person chooses, so closing the
+				// app before choosing shows the picker again. Anyone with a stored value is an existing user.
+				if (storedCollectionId === null && storedUiLanguage === null) {
+					setNeedsLanguageChoice(true);
+					i18n.changeLanguage(defaultUiLanguage);
+					return;
+				}
+				setNeedsLanguageChoice(false);
 
 				const allowedCollectionIds = collections.map(collection => collection.id);
 				const nextCollectionId = storedCollectionId && allowedCollectionIds.includes(storedCollectionId)
@@ -71,6 +95,8 @@ export const AppStateProvider = ({ children }: { children: React.ReactNode }) =>
 				if (isMounted) {
 					setSelectedCollectionIdState(fallbackCollectionId);
 					setUiLanguageState(defaultUiLanguage);
+					// Storage could not be read: ask, rather than silently opening the Kinyarwanda hymnal.
+					setNeedsLanguageChoice(true);
 					i18n.changeLanguage(defaultUiLanguage);
 				}
 			}
@@ -96,12 +122,23 @@ export const AppStateProvider = ({ children }: { children: React.ReactNode }) =>
 		});
 	}, []);
 
+	const completeLanguageChoice = useCallback((language: UiLanguageCode) => {
+		setUiLanguage(language);
+		const collectionId = COLLECTION_BY_UI_LANGUAGE[language];
+		setSelectedCollectionId(
+			collections.some(collection => collection.id === collectionId) ? collectionId : fallbackCollectionId
+		);
+		setNeedsLanguageChoice(false);
+	}, [collections, fallbackCollectionId, setSelectedCollectionId, setUiLanguage]);
+
 	const value = useMemo(() => ({
 		selectedCollectionId,
 		setSelectedCollectionId,
 		uiLanguage,
 		setUiLanguage,
-	}), [selectedCollectionId, setSelectedCollectionId, uiLanguage, setUiLanguage]);
+		needsLanguageChoice,
+		completeLanguageChoice,
+	}), [selectedCollectionId, setSelectedCollectionId, uiLanguage, setUiLanguage, needsLanguageChoice, completeLanguageChoice]);
 
 	return (
 		<AppStateContext.Provider value={value}>
