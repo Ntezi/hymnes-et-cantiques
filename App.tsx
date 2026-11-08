@@ -10,7 +10,6 @@ import FavoriteSongsScreen from "./src/FavoriteSongsScreen";
 import SearchScreen from './src/SearchScreen';
 import RecentScreen from './src/RecentScreen';
 import CollectionsScreen from './src/CollectionsScreen';
-import { useKeepAwake } from 'expo-keep-awake';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { AppStateProvider } from './src/appState';
 import { useTranslation } from 'react-i18next';
@@ -117,7 +116,6 @@ const MainTabsNavigator = () => {
 };
 
 export default function App() {
-	useKeepAwake();
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {

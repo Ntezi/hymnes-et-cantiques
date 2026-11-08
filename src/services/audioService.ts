@@ -1,4 +1,5 @@
-import { Audio, AVPlaybackStatus, AVPlaybackStatusSuccess } from 'expo-av';
+import { Audio } from 'expo-av';
+import type { AVPlaybackStatus, AVPlaybackStatusSuccess } from 'expo-av';
 
 type PlaybackStatusListener = (status: AVPlaybackStatusSuccess) => void;
 
@@ -7,6 +8,16 @@ const PLAYBACK_POLL_INTERVAL_MS = 250;
 class AudioService {
 	private sound: Audio.Sound | null = null;
 	private statusListener: PlaybackStatusListener | null = null;
+	// Screen that currently owns the Sound; lets a screen unload only its own audio.
+	private owner: string | null = null;
+	// Load/unload calls run one after another, so two rapid loads can never leave an orphan Sound.
+	private queue: Promise<unknown> = Promise.resolve();
+
+	private enqueue<T>(task: () => Promise<T>): Promise<T> {
+		const run = this.queue.then(task, task);
+		this.queue = run.catch(() => undefined);
+		return run;
+	}
 
 	private emitLoadedStatus = (status: AVPlaybackStatus) => {
 		if (!status.isLoaded || !this.statusListener) {
@@ -30,24 +41,38 @@ class AudioService {
 		});
 	}
 
-	async loadAsync(source: string | { uri: string } | number, shouldPlay = false): Promise<AVPlaybackStatus> {
-		console.log("AudioService.loadAsync: Loading source", source);
-		await this.unloadAsync();
-		await this.configureAsync();
+	loadAsync(
+		source: string | { uri: string } | number,
+		shouldPlay = false,
+		owner: string | null = null,
+		listener: PlaybackStatusListener | null = null
+	): Promise<AVPlaybackStatus> {
+		return this.enqueue(async () => {
+			await this.unloadNowAsync();
+			await this.configureAsync();
 
-		this.sound = new Audio.Sound();
-		this.sound.setOnPlaybackStatusUpdate(this.emitLoadedStatus);
+			const sound = new Audio.Sound();
+			this.sound = sound;
+			this.owner = owner;
+			this.statusListener = listener;
+			sound.setOnPlaybackStatusUpdate(this.emitLoadedStatus);
 
-		const loadSource = typeof source === 'string' ? { uri: source } : source;
+			const loadSource = typeof source === 'string' ? { uri: source } : source;
 
-		return this.sound.loadAsync(
-			loadSource,
-			{
-				shouldPlay,
-				positionMillis: 0,
-				progressUpdateIntervalMillis: PLAYBACK_POLL_INTERVAL_MS,
+			try {
+				return await sound.loadAsync(
+					loadSource,
+					{
+						shouldPlay,
+						positionMillis: 0,
+						progressUpdateIntervalMillis: PLAYBACK_POLL_INTERVAL_MS,
+					}
+				);
+			} catch (error) {
+				await this.unloadNowAsync();
+				throw error;
 			}
-		);
+		});
 	}
 
 	async playAsync() {
@@ -91,14 +116,32 @@ class AudioService {
 		return this.sound.getStatusAsync();
 	}
 
-	async unloadAsync() {
-		if (!this.sound) {
+	// With an owner, only unloads when that owner still holds the Sound (a screen that is
+	// closing must not kill audio the next screen started).
+	unloadAsync(owner?: string): Promise<void> {
+		return this.enqueue(async () => {
+			if (owner !== undefined && owner !== this.owner) {
+				return;
+			}
+			await this.unloadNowAsync();
+		});
+	}
+
+	private async unloadNowAsync() {
+		const sound = this.sound;
+		this.sound = null;
+		this.owner = null;
+		this.statusListener = null;
+		if (!sound) {
 			return;
 		}
 
-		this.sound.setOnPlaybackStatusUpdate(null);
-		await this.sound.unloadAsync();
-		this.sound = null;
+		sound.setOnPlaybackStatusUpdate(null);
+		try {
+			await sound.unloadAsync();
+		} catch {
+			// Already unloaded.
+		}
 	}
 }
 

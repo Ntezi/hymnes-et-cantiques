@@ -7,6 +7,7 @@ import { addRecentSongId } from './recentSongs';
 import AddToFavoriteSheet from './AddToFavoriteSheet';
 import SameMelodySheet from './SameMelodySheet';
 import { AVPlaybackStatusSuccess } from 'expo-av';
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import MelodyPlayerControl from './MelodyPlayerControl';
 import HighlightedText from './HighlightedText';
 import { getActiveTimedLine, getActiveTimedLineKey, getSongMelodyMetadata } from './melodyMetadata';
@@ -86,7 +87,6 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [isSameMelodySheetVisible, setIsSameMelodySheetVisible] = useState(false);
 	const [isLanguageSheetVisible, setIsLanguageSheetVisible] = useState(false);
 	const [isMelodyControlVisible, setIsMelodyControlVisible] = useState(false);
-	const [melodyReloadKey, setMelodyReloadKey] = useState(0);
 	const [isMelodyLoading, setIsMelodyLoading] = useState(false);
 	const [melodyError, setMelodyError] = useState<string | null>(null);
 	const [playbackPositionMs, setPlaybackPositionMs] = useState(0);
@@ -95,6 +95,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [isBuffering, setIsBuffering] = useState(false);
 	const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
 	const [fontStep, setFontStep] = useState(DEFAULT_LYRICS_FONT_STEP);
+	const audioOwnerId = useRef(`song-detail-${Math.random().toString(36).slice(2)}`).current;
+	const isMelodyLoadedRef = useRef(false);
+	const playbackEpochRef = useRef(0);
 	const scrollViewRef = useRef<ScrollView | null>(null);
 	const lineOffsetMapRef = useRef<Record<string, number>>({});
 	const lastAutoScrollLineRef = useRef<string | null>(null);
@@ -109,11 +112,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 		}
 		return HE_C_AUDIO[String(song_number)] ?? null;
 	}, [song_number]);
-	const melodySourceUri = useMemo(
-		() => melodyMetadata?.melody_url?.trim() || null,
-		[melodyMetadata?.melody_url]
-	);
-	const hasMelodySource = Boolean(localAsset || melodySourceUri);
+	const hasMelodySource = Boolean(localAsset);
 	const shouldHighlightLyrics =
 		ENABLE_LYRIC_HIGHLIGHTING && hasPlaybackStarted && (isPlaying || playbackPositionMs > 0);
 	const lyricSyncPositionMs = useMemo(
@@ -203,78 +202,52 @@ const SongDetailScreen = ({ route, navigation }) => {
 		})();
 	}, [navigation, song_number, title, song_id]);
 
-	useEffect(() => {
-		if (!SHOW_MELODY_PLAYBACK) {
-			setIsMelodyLoading(false);
-			setMelodyError(null);
-			audioService.setStatusListener(null);
-			audioService.unloadAsync();
-			return;
-		}
-
-		let isDisposed = false;
-		lineOffsetMapRef.current = {};
-		lastAutoScrollLineRef.current = null;
-		setIsLanguageSheetVisible(false);
-		setIsMelodyControlVisible(false);
+	// Audio is not loaded when the hymn opens. It loads on the first Play (see loadAndPlayMelody)
+	// and is released when the hymn changes, the screen loses focus or unmounts.
+	const resetPlaybackState = () => {
+		playbackEpochRef.current += 1;
+		isMelodyLoadedRef.current = false;
 		setPlaybackPositionMs(0);
 		setPlaybackDurationMs(0);
 		setIsPlaying(false);
 		setIsBuffering(false);
+		setIsMelodyLoading(false);
 		setHasPlaybackStarted(false);
 		setMelodyError(null);
+	};
 
-		const loadMelody = async () => {
-			audioService.setStatusListener((status) => {
-				if (isDisposed) {
-					return;
-				}
-				applyPlaybackStatus(status);
-			});
-
-			if (!hasMelodySource) {
-				setIsMelodyLoading(false);
-				await audioService.unloadAsync();
-				return;
-			}
-
-			setIsMelodyLoading(true);
-			try {
-				const source = localAsset ?? (melodySourceUri ? { uri: melodySourceUri } : null);
-				if (!source) {
-					throw new Error('No audio source');
-				}
-
-				console.log(`Loading melody for song ${song_number}, source:`, source);
-				const initialStatus = await audioService.loadAsync(source as any, false);
-				if (!isDisposed && initialStatus.isLoaded) {
-					applyPlaybackStatus(initialStatus);
-					console.log(`Melody loaded successfully for song ${song_number}`);
-				}
-				if (!isDisposed && !initialStatus.isLoaded) {
-					console.error(`Failed to load melody for song ${song_number}: status not loaded`);
-					setMelodyError(t('songDetail.unableToLoadMelody'));
-				}
-			} catch (err) {
-				console.error(`Error loading melody for song ${song_number}:`, err);
-				if (!isDisposed) {
-					setMelodyError(t('songDetail.unableToLoadMelody'));
-				}
-			} finally {
-				if (!isDisposed) {
-					setIsMelodyLoading(false);
-				}
-			}
-		};
-
-		loadMelody();
+	useEffect(() => {
+		lineOffsetMapRef.current = {};
+		lastAutoScrollLineRef.current = null;
+		setIsLanguageSheetVisible(false);
+		setIsMelodyControlVisible(false);
+		resetPlaybackState();
 
 		return () => {
-			isDisposed = true;
-			audioService.setStatusListener(null);
-			audioService.unloadAsync();
+			playbackEpochRef.current += 1;
+			audioService.unloadAsync(audioOwnerId);
 		};
-	}, [song_id, song_number, collection_id, hasMelodySource, localAsset, melodySourceUri, melodyReloadKey, t]);
+	}, [song_id, collection_id, audioOwnerId]);
+
+	useEffect(() => {
+		// Another hymn can be pushed on top of this one (same melody / translation): release the audio.
+		const unsubscribe = navigation.addListener('blur', () => {
+			audioService.unloadAsync(audioOwnerId);
+			resetPlaybackState();
+		});
+		return unsubscribe;
+	}, [navigation, audioOwnerId]);
+
+	useEffect(() => {
+		if (!isPlaying) {
+			return;
+		}
+
+		activateKeepAwake(audioOwnerId).catch(() => undefined);
+		return () => {
+			deactivateKeepAwake(audioOwnerId).catch(() => undefined);
+		};
+	}, [isPlaying, audioOwnerId]);
 
 	useEffect(() => {
 		if (!activeLineKey || lastAutoScrollLineRef.current === activeLineKey) {
@@ -369,19 +342,58 @@ const SongDetailScreen = ({ route, navigation }) => {
 		}
 	};
 
+	const loadAndPlayMelody = async () => {
+		if (!localAsset) {
+			return;
+		}
+
+		const epoch = playbackEpochRef.current;
+		setIsMelodyLoading(true);
+		try {
+			const initialStatus = await audioService.loadAsync(
+				localAsset,
+				true,
+				audioOwnerId,
+				(status) => {
+					if (epoch === playbackEpochRef.current) {
+						applyPlaybackStatus(status);
+					}
+				}
+			);
+			if (epoch !== playbackEpochRef.current) {
+				return;
+			}
+			if (initialStatus.isLoaded) {
+				isMelodyLoadedRef.current = true;
+				setHasPlaybackStarted(true);
+				applyPlaybackStatus(initialStatus);
+			} else {
+				setMelodyError(t('songDetail.unableToLoadMelody'));
+			}
+		} catch (err) {
+			console.error(`Error loading melody for song ${song_number}:`, err);
+			if (epoch === playbackEpochRef.current) {
+				setMelodyError(t('songDetail.unableToLoadMelody'));
+			}
+		} finally {
+			if (epoch === playbackEpochRef.current) {
+				setIsMelodyLoading(false);
+			}
+		}
+	};
+
 	const onTogglePlayPause = async () => {
 		if (!hasMelodySource) {
-			console.log("onTogglePlayPause: No melody metadata or local asset");
 			return;
 		}
 
 		try {
 			setMelodyError(null);
 			if (isPlaying) {
-				console.log("onTogglePlayPause: Pausing");
 				await audioService.pauseAsync();
+			} else if (!isMelodyLoadedRef.current) {
+				await loadAndPlayMelody();
 			} else {
-				console.log("onTogglePlayPause: Playing");
 				setHasPlaybackStarted(true);
 				await audioService.playAsync();
 			}
@@ -410,7 +422,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 	};
 
 	const onRetryMelodyLoad = () => {
-		setMelodyReloadKey((prev) => prev + 1);
+		setMelodyError(null);
+		isMelodyLoadedRef.current = false;
+		loadAndPlayMelody();
 	};
 
 	const getActiveWordIndexForLine = (
