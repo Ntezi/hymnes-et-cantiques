@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
 import SafeAreaView from "react-native-safe-area-view";
 import {
 	HandlerStateChangeEvent,
@@ -551,6 +551,10 @@ const SongDetailScreen = ({ route, navigation }) => {
 			});
 	};
 
+	// Labels under the action icons only on wide screens; phones show icons only to save vertical space.
+	const { width: windowWidth } = useWindowDimensions();
+	const showActionLabels = windowWidth >= 600;
+
 	const renderActionChip = ({
 		key,
 		icon,
@@ -559,9 +563,11 @@ const SongDetailScreen = ({ route, navigation }) => {
 		active = false,
 		disabled = false,
 		badge,
+		textIcon,
 	}: {
 		key: string;
-		icon: string;
+		icon?: string;
+		textIcon?: string;
 		label: string;
 		onPress: () => void;
 		active?: boolean;
@@ -572,6 +578,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 			key={key}
 			style={[
 				styles.actionChip,
+				!showActionLabels && styles.actionChipCompact,
 				active && styles.actionChipActive,
 				disabled && styles.actionChipDisabled,
 			]}
@@ -583,27 +590,33 @@ const SongDetailScreen = ({ route, navigation }) => {
 			accessibilityState={{ disabled, selected: active }}
 		>
 			<View style={styles.actionIconWrap}>
-				<Icon
-					name={icon}
-					size={20}
-					color={disabled ? '#b3b3b3' : active ? '#ffffff' : '#6d3549'}
-				/>
+				{textIcon ? (
+					<Text style={[styles.actionTextIcon, active && styles.actionLabelActive, disabled && styles.actionLabelDisabled]}>{textIcon}</Text>
+				) : (
+					<Icon
+						name={icon || 'ellipse-outline'}
+						size={20}
+						color={disabled ? '#b3b3b3' : active ? '#ffffff' : '#6d3549'}
+					/>
+				)}
 				{badge ? (
 					<View style={[styles.actionBadge, active && styles.actionBadgeActive]}>
 						<Text style={[styles.actionBadgeText, active && styles.actionBadgeTextActive]}>{badge}</Text>
 					</View>
 				) : null}
 			</View>
-			<Text
-				style={[
-					styles.actionLabel,
-					active && styles.actionLabelActive,
-					disabled && styles.actionLabelDisabled,
-				]}
-				numberOfLines={2}
-			>
-				{label}
-			</Text>
+			{showActionLabels ? (
+				<Text
+					style={[
+						styles.actionLabel,
+						active && styles.actionLabelActive,
+						disabled && styles.actionLabelDisabled,
+					]}
+					numberOfLines={2}
+				>
+					{label}
+				</Text>
+			) : null}
 		</TouchableOpacity>
 	);
 
@@ -651,19 +664,24 @@ const SongDetailScreen = ({ route, navigation }) => {
 			>
 			<View style={styles.swipeArea}>
 				<ScrollView ref={scrollViewRef} contentContainerStyle={styles.contentContainer}>
-					{currentIndex >= 0 && songs.length > 1 ? (
-						<Text style={styles.positionText}>
-							{t('songDetail.positionOf', { current: currentIndex + 1, total: songs.length })}
-						</Text>
-					) : null}
 					<View style={styles.songHeaderCard}>
-						<View style={styles.songNumberBadge}>
-							<Text style={styles.songNumberBadgeText}>{song_number}</Text>
+						<View style={styles.songTitleRow}>
+							<View style={styles.songNumberBadge}>
+								<Text style={styles.songNumberBadgeText}>{song_number}</Text>
+							</View>
+							<View style={styles.songTitleText}>
+								<Text style={styles.songTitle}>{title}</Text>
+								{sub_title || (currentIndex >= 0 && songs.length > 1) ? (
+									<Text style={styles.songSubtitle} numberOfLines={1}>
+										{sub_title ? <Text style={styles.songSubtitleItalic}>{sub_title}</Text> : null}
+										{sub_title && currentIndex >= 0 && songs.length > 1 ? '  ·  ' : ''}
+										{currentIndex >= 0 && songs.length > 1
+											? t('songDetail.positionOf', { current: currentIndex + 1, total: songs.length })
+											: ''}
+									</Text>
+								) : null}
+							</View>
 						</View>
-						<Text style={styles.songTitle}>{title}</Text>
-						{sub_title ? (
-							<Text style={styles.songSubtitle}>{sub_title}</Text>
-						) : null}
 						{isFavorite && songFavoriteCategoryNames ? (
 							<View style={styles.favoriteTagRow}>
 								<Icon name="heart" size={12} color="#6d3549" />
@@ -706,6 +724,21 @@ const SongDetailScreen = ({ route, navigation }) => {
 								disabled: crossLanguageSongs.length === 0,
 								onPress: () => setIsLanguageSheetVisible(true),
 							})}
+							<View style={styles.actionDivider} />
+							{renderActionChip({
+								key: 'font-smaller',
+								textIcon: 'A−',
+								label: t('songDetail.fontSmaller'),
+								disabled: fontStep === 0,
+								onPress: () => changeFontStep(-1),
+							})}
+							{renderActionChip({
+								key: 'font-larger',
+								textIcon: 'A+',
+								label: t('songDetail.fontLarger'),
+								disabled: fontStep === LYRICS_FONT_SIZES.length - 1,
+								onPress: () => changeFontStep(1),
+							})}
 						</View>
 					</View>
 
@@ -730,34 +763,6 @@ const SongDetailScreen = ({ route, navigation }) => {
 					</View>
 					</PanGestureHandler>
 				) : null}
-
-					<View style={styles.fontSizeRow}>
-						<Text style={styles.fontSizeLabel}>{t('songDetail.fontSize')}</Text>
-						<View style={styles.fontSizeButtons}>
-							<TouchableOpacity
-								style={[styles.fontSizeButton, fontStep === 0 && styles.fontSizeButtonDisabled]}
-								disabled={fontStep === 0}
-								onPress={() => changeFontStep(-1)}
-								activeOpacity={0.8}
-								accessibilityRole="button"
-								accessibilityLabel={t('songDetail.fontSmaller')}
-								accessibilityState={{ disabled: fontStep === 0 }}
-							>
-								<Text style={[styles.fontSizeButtonText, styles.fontSizeButtonTextSmall, fontStep === 0 && styles.fontSizeButtonTextDisabled]}>A-</Text>
-							</TouchableOpacity>
-							<TouchableOpacity
-								style={[styles.fontSizeButton, fontStep === LYRICS_FONT_SIZES.length - 1 && styles.fontSizeButtonDisabled]}
-								disabled={fontStep === LYRICS_FONT_SIZES.length - 1}
-								onPress={() => changeFontStep(1)}
-								activeOpacity={0.8}
-								accessibilityRole="button"
-								accessibilityLabel={t('songDetail.fontLarger')}
-								accessibilityState={{ disabled: fontStep === LYRICS_FONT_SIZES.length - 1 }}
-							>
-								<Text style={[styles.fontSizeButtonText, fontStep === LYRICS_FONT_SIZES.length - 1 && styles.fontSizeButtonTextDisabled]}>A+</Text>
-							</TouchableOpacity>
-						</View>
-					</View>
 
 					<View style={styles.versesWrap}>
 					{verses.map((verse, index) => {
@@ -937,11 +942,11 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: '#e6e6e6',
 		borderRadius: 16,
-		paddingHorizontal: 16,
-		paddingTop: 20,
-		paddingBottom: 14,
-		alignItems: 'center',
-		marginBottom: 14,
+		paddingHorizontal: 12,
+		paddingTop: 12,
+		paddingBottom: 10,
+		alignItems: 'stretch',
+		marginBottom: 12,
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 2 },
 		shadowOpacity: 0.07,
@@ -951,7 +956,8 @@ const styles = StyleSheet.create({
 	favoriteTagRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		marginTop: 10,
+		alignSelf: 'flex-start',
+		marginTop: 8,
 		paddingHorizontal: 10,
 		paddingVertical: 5,
 		borderRadius: 999,
@@ -960,11 +966,39 @@ const styles = StyleSheet.create({
 		borderColor: '#f5d6e1',
 		maxWidth: '100%',
 	},
+	songTitleRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	songTitleText: {
+		flex: 1,
+		minWidth: 0,
+		marginLeft: 12,
+	},
+	songSubtitleItalic: {
+		fontStyle: 'italic',
+	},
+	actionDivider: {
+		width: 1,
+		alignSelf: 'stretch',
+		marginHorizontal: 3,
+		backgroundColor: '#f0e4ea',
+	},
+	actionChipCompact: {
+		minHeight: 44,
+		paddingVertical: 0,
+		justifyContent: 'center',
+	},
+	actionTextIcon: {
+		fontSize: 16,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
 	actionRow: {
 		flexDirection: 'row',
 		alignSelf: 'stretch',
-		marginTop: 16,
-		paddingTop: 14,
+		marginTop: 10,
+		paddingTop: 10,
 		borderTopWidth: 1,
 		borderTopColor: '#f0e4ea',
 	},
@@ -1032,13 +1066,12 @@ const styles = StyleSheet.create({
 		color: '#b3b3b3',
 	},
 	songNumberBadge: {
-		width: 56,
-		height: 56,
-		borderRadius: 14,
+		width: 48,
+		height: 48,
+		borderRadius: 12,
 		backgroundColor: '#f5e0e9',
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginBottom: 12,
 	},
 	songNumberBadgeText: {
 		fontSize: 22,
@@ -1046,18 +1079,15 @@ const styles = StyleSheet.create({
 		color: '#6d3549',
 	},
 	songTitle: {
-		fontSize: 22,
+		fontSize: 19,
 		fontWeight: '600',
 		color: '#1a1a1a',
-		textAlign: 'center',
-		lineHeight: 30,
+		lineHeight: 25,
 	},
 	songSubtitle: {
-		fontSize: 14,
-		fontStyle: 'italic',
+		fontSize: 13,
 		color: '#666666',
-		marginTop: 6,
-		textAlign: 'center',
+		marginTop: 2,
 	},
 	favoriteSummaryText: {
 		marginLeft: 5,
