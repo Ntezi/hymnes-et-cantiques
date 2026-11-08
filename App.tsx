@@ -11,7 +11,8 @@ import SearchScreen from './src/SearchScreen';
 import RecentScreen from './src/RecentScreen';
 import CollectionsScreen from './src/CollectionsScreen';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { AppStateProvider } from './src/appState';
+import { AppStateProvider, useAppState } from './src/appState';
+import LanguageChoiceScreen from './src/LanguageChoiceScreen';
 import { useTranslation } from 'react-i18next';
 import './src/i18n';
 
@@ -115,6 +116,30 @@ const MainTabsNavigator = () => {
 	);
 };
 
+const AppContent = () => {
+	const { needsLanguageChoice } = useAppState();
+
+	if (needsLanguageChoice === null) {
+		return <SplashScreen />;
+	}
+	if (needsLanguageChoice) {
+		return <LanguageChoiceScreen />;
+	}
+
+	return (
+		<NavigationContainer>
+			<RootStack.Navigator screenOptions={stackScreenOptions}>
+				<RootStack.Screen
+					name="MainTabs"
+					component={MainTabsNavigator}
+					options={{ headerShown: false }}
+				/>
+				<RootStack.Screen name="SongDetail" component={SongDetailScreen} />
+			</RootStack.Navigator>
+		</NavigationContainer>
+	);
+};
+
 export default function App() {
 	const [isLoading, setIsLoading] = useState(true);
 
@@ -132,16 +157,7 @@ export default function App() {
 
 	return (
 		<AppStateProvider>
-			<NavigationContainer>
-				<RootStack.Navigator screenOptions={stackScreenOptions}>
-					<RootStack.Screen
-						name="MainTabs"
-						component={MainTabsNavigator}
-						options={{ headerShown: false }}
-					/>
-					<RootStack.Screen name="SongDetail" component={SongDetailScreen} />
-				</RootStack.Navigator>
-			</NavigationContainer>
+			<AppContent />
 		</AppStateProvider>
 	);
 }
