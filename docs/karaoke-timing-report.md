@@ -1,380 +1,357 @@
-# HEC lyric timing: method and quality report
+# HEC lyric timing: method and quality report (v2, built from the karaoke MIDI files)
 
-Generated 2026-11-08 by `python3 align.py` (about 20 s). Outputs, all in `/home/claude/hec/timing/`:
+Generated 2026-11-08 by `python3 align.py` (about 10 s; needs `mido`). Outputs, all in `/home/claude/hec/timing/`:
 
-- `lyricTiming.json` (**version 2, one event per sung syllable**): what the app loads. Contains only hymns with quality >= 0.6 (`QUALITY_THRESHOLD` in align.py).
-- `quality.json`: diagnostics for every hymn (segmentation, scores, chosen repeat mode, elision and missed-onset counts).
-- `python3 align.py --show 7 [--table] [--verse 0]`: prints line start offsets per verse, and with `--table` the syllable-to-time table (token, syllable text, ms). Nothing is written.
+- `lyricTiming.json`: version 2, one event per sung Kinyarwanda syllable, all times in **audio** time. Contains only hymns with quality >= 0.6 (`QUALITY_THRESHOLD` in align.py).
+- `quality.json`: diagnostics for every hymn (time map, verse and line matching notes).
+- `python3 align.py --show 7 --verse 0`: prints a table of token, syllable, audio ms, the French syllable it sits on, and its MIDI time. Nothing is written.
 
-## Format (version 2)
+**Result: 270 of 272 included.** The two left out are 173 (MIDI and audio don't fit) and 200bis (no lyrics). 216 hymns score 1.0 and 44 score between 0.9 and 0.99.
+
+The earlier version, built from audio onsets alone, was replaced. It had no notes to go by, so it guessed slurs and line boundaries and could drift by 1-2 notes. A copy of that script is kept in the scratchpad, outside this folder.
+
+## Format
 
 `{"version":2,"generatedAt":"2026-11-08","hymns":{"7":{"quality":q,"events":[[verseIdx,lineIdx,wordIdx,charStart,charEnd,startMs,endMs],...]}}}`
 
-- There is one event per sung syllable, sorted by startMs.
-- `charStart` and `charEnd` are a half-open range inside the token string, using the app's tokenisation.
-- Syllable ranges are contiguous and cover each token exactly once:
-  - Consonants and the apostrophe of an elided vowel open the next syllable: `Wow'utuye` = `Wo|w'u|tu|ye`, `n'abamarayika:` = `n'a|ba|ma|ra|yi|ka:`.
+- `charStart` and `charEnd` are a half-open range inside the token, using the app's tokenisation (`content.split(/\s+/)`).
+- A word's syllable ranges are contiguous and cover the whole token:
+  - Consonants and the apostrophe of an elided vowel open the next syllable: `Wow'utuye` = `Wo|w'u|tu|ye`.
   - Leading punctuation and marker text attach to the first syllable; trailing consonants and punctuation attach to the last.
-- A melisma is one event covering all its notes.
-- A repeated line gives repeated events.
 - A token with letters but no vowel (a lone `n'`) gets one whole-token event, timed with the next syllable.
-- Repeat markers (`(bis)` etc.) and punctuation-only tokens get no events.
-- endMs is the next later syllable start. A line-final syllable is capped at an envelope rest, as before.
-- When two words merge on one note, both syllables get the same start and the same end.
-- `align.py` checks every run that each range is inside its token, that every sung token occurrence is covered exactly once, that every sung token has events, and that events are sorted. It prints "validation ok".
-
-**Result: 249 of 272 audio files included.** 22 hymns are excluded as low quality, plus 200bis, which has audio but no lyrics in songs.json.
+- Repeat markers and punctuation-only tokens get no events.
+- startMs is the audio time of the syllable's first note.
+- **endMs is the end of the syllable's last soprano note, ties and melisma included**, so rests show up as gaps between events.
+- Events are sorted by startMs. Repeated lines and refrains give repeated events.
+- `align.py` checks every run that ranges are inside tokens, that each sung token occurrence is covered exactly once, and that events are sorted. It prints "validation ok".
 
 ## Method
 
-1. **Tokenisation** is the same as the app's: lines are trimmed and empty ones dropped, a leading `N.` is stripped, then the line is split on whitespace. Event indices refer to these tokens. Repeat-marker tokens get no event: `(bis)`, `(x2)`, `(2)`, `(ter)`, `(3)`, `(x3)`, `(etc)`. Punctuation-only tokens get no event either.
-2. **Syllables.** Apostrophes are deleted, because the elided vowel is already missing from the spelling (`Wow'utuye` gives wo-wu-tu-ye). After that, every vowel letter counts as one syllable (CV, CCV, NCV; y and w count as consonants). There is one optional extra rule. When a word ends in a vowel and the next word in the line starts with one, singers usually merge the two (`Urondora ibyo mu ijuru` is printed as `Urondor'ibyo mw'ijuru` in the Growing in Grace book). The aligner may merge the two syllables onto one note for a small cost, or a larger cost across a comma.
-3. **Repeats.**
-   - A marker in the middle of a line repeats the words before it (hymns 41, 138, 271).
-   - A marker at the end of a line repeats either that line or the couplet. The choice is made once per hymn, by the lowest total alignment cost across the options line, couplet and none.
-   - Some hymns print the refrain only under verse 1 (101, 110, 125, 240, 256, 263, 265). For these the aligner also tries appending that refrain to every later verse. The events then point at verse 0's refrain lines.
-4. **Verse segmentation.** The MIDI plays the same music for every verse, so I search for the time shift P that maps onsets onto onsets. It typically matches 100% of onsets within 40 ms. Verse k then starts at t0 + kP. If P is missing, matches less than 80% of onsets, or gives a number of repeats different from the number of verses, the script falls back to the largest gaps with low confidence. In practice every hymn on the fallback path ended up excluded.
-5. **Missing first chord.** Every render starts already sounding: the envelope is non-zero from 0 s, but the first onset is at about 0.5 to 1.4 s. In verses 2 and later, the same chord shows up as an onset 0.4 to 1.5 s before the periodic start. That chord is the verse's first note: chroma shows it equals the pickup of the repeated phrase, as at 18.04 s in hymn 7. So the script adds the chord back at 0.00 s and moves every verse start back by that lead-in.
-6. **Alignment.** Each verse runs a monotone dynamic-programming alignment of syllables to onsets.
-   - Onset strength, relative to the hymn median, gives a melody-note likelihood. Weak onsets are cheap to skip (inner voices, ties).
-   - Skipping a strong onset costs a melisma.
-   - A syllable on a weak onset costs extra.
-   - A line-final syllable that is not held about 1.6 beats or longer costs extra.
-   - A long rest or held note in the middle of a line costs extra.
-   - A line start without a gap before it costs a little.
-   - Two syllables can share one onset (a vowel merge, or a missed onset). A missed onset is cheaper inside a long interval, and its syllable is timed by interpolation.
-   - The top-pitch estimate is not used: it is unreliable in sustained SATB, and in hymn 7 it jumps an octave inside one phrase.
-7. **Consistency passes.**
-   - (a) Across verses: the music is identical, so line starts must sit at the same offset from the verse start. Each verse's line starts are tried as a shared template for all verses, and the cheapest total wins.
-   - (b) Within a verse: onsets with matching chroma and rhythm over 6 or more notes mark a repeated passage, for example lines 1-2 = lines 3-4. A line start is encouraged where a repeat begins, and the two copies are aligned so their line starts correspond.
-8. **Syllable times.** A syllable starts at its note, or at its interpolated time if the onset was missed. It ends at the next later syllable start. For a line-final syllable, the end is cut short if the envelope drops below 20% of the note's peak (a real rest). In practice the piano sustain seldom drops that far, so line-final syllables usually last until the next line starts.
-9. **Quality** (0 to 1) is a product of these terms:
-   - Segmentation confidence (period match, or 0.9 for single-verse hymns).
-   - Per-verse alignment score: syllables on strong onsets, held line ends, syllable to strong-onset ratio, few skipped strong onsets, no line crossing a long gap, few missed onsets. This is 0.7 of the mean plus 0.3 of the worst verse.
-   - Agreement of the independent pass-1 line starts across verses: factor 0.55 + 0.45 x agreement, or 0.85 when there is only one verse.
-   - Repeated-passage consistency: factor 0.75 + 0.25 x consistency.
+1. **MIDI** (`../midi/HeC_NNN-mono-piano-*.mid`):
+   - Note times in seconds follow the tempo map.
+   - The soprano is the track named So*an* (some files spell it "Sorpano"); otherwise the first track with notes.
+   - The lyric track holds one French syllable per soprano note onset.
+   - A lyric starting with `\\` opens a paragraph and `/` opens a line. A paragraph starting with "N." opens a new verse.
+   - A French syllable's notes are its own note plus the following lyric-less soprano notes that continue without a rest (ties and melisma).
+   - Every repeat is written out in the MIDI, so it gives the exact number of times each line and refrain is played.
+2. **MIDI to audio time.** All-voice MIDI onsets are matched against the audio onsets in `onsets.json`: first by a histogram of time differences, then by a linear least-squares fit audio = a x midi + b.
+   - The scale a is 1.0000 everywhere (range 0.99986 to 1.00003): no tempo change.
+   - The offset b differs per hymn, from -5.35 to +3.33 s (median -1.81 s), because the renders trimmed different lead-ins.
+   - Residuals on matched onsets are about 4 ms. 60-80% matched is normal, because the audio onset detector misses repeated and inner-voice notes.
+   - Hymn 7: b = -2.346 s, a = 0.999998, 100% matched, rms 4 ms. Its first note (MIDI 2.25 s) falls at -0.10 s, just before the audio file starts, and is clipped to 0. That confirms the cut first chord found earlier.
+3. **Verse matching.** Kinyarwanda verse entries are matched to MIDI verses by a dynamic-programming alignment. One entry can cover 1-3 MIDI verses or the reverse, and either side can be skipped. The cost is the line-alignment cost, plus a penalty when verse numbers disagree. Several numbered Kinyarwanda verses on one MIDI verse are allowed only when the MIDI has fewer verses.
+4. **Line matching** within a verse:
+   - Candidate expansions of each Kinyarwanda verse are tried: each line-final `(bis)`/`(ter)` as a line repeat, a couplet repeat, or no repeat. For hymns that print the refrain only under verse 1, appending it to later verses is also tried.
+   - A mid-line repeat is sung as separate phrases (hymns 41, 138, 271).
+   - Kinyarwanda lines are aligned to MIDI lines, 1:1, 1:2, 2:1, 1:3 or 3:1. The cost is the syllable-count difference, where possible vowel merges count as cheap.
+5. **Syllable matching** within a matched line group:
+   - Equal counts: one Kinyarwanda syllable per French syllable.
+   - Otherwise a small dynamic-programming alignment. Two or three Kinyarwanda syllables can go on one note; this is cheap at a vowel elision or a vowel cluster, and never allowed across a Kinyarwanda line boundary. One Kinyarwanda syllable can spread over 2-3 French syllables; this is cheapest on the last syllable of a line, where French often has an extra mute-e note.
+   - Merged syllables at an elision share the whole note. Other merged syllables split the note evenly, so the colour keeps moving.
+6. **Quality** is the fraction of Kinyarwanda sung lines whose syllable count matches the French exactly or nearly (difference of 1 or less after allowing vowel merges). Lines without a MIDI counterpart count as failures. The score is halved for a poor time-map fit (under 45% matched, or rms over 10 ms) and reduced when syllables fall before the audio starts.
 
-   This score measures internal consistency, not accuracy against a score. There is no ground truth here.
+## Hymns 1-8
 
-## Sanity checks (hymns 1-8)
-
-| hymn | q | notes |
+| hymn | q | |
 |---|---|---|
-| 1 | 0.64 | 2 verses with a 3-line refrain, dotted rhythm with no clear rests. Independent verses disagreed on 1/3 of line starts (agreement 0.67); after the consistency passes, lines 1-3 and 4-6 follow the repeated melody. Borderline. |
-| 2 | 0.96 | clean |
-| 3 | 0.74 | single verse, so no cross-verse check (capped at 0.85 x score) |
-| 4 | 0.64 | verse 1 has 5 printed lines and verses 2-3 have 6, so the cross-verse check isn't possible. The `(bis)` on line 1 is sung as a line repeat. Borderline. |
-| 5 | 0.91 | 8 lines, 2-3 missed onsets per verse interpolated |
-| 6 | 0.88 | clean |
-| 7 | 0.83 | 5 verses x 6 lines. Line starts are identical in all verses: 0.00, 8.97, 18.04, 27.11, 35.35, 45.24 s after the verse start, at a beat of 0.752 s, with 6.0 s between verses. Lines 1-2 and 3-4 are the same melody (chroma 0.996) and start on the same notes. Open doubt: line 5 may really start one note later (36.18 instead of 35.35). |
-| 8 | 0.84 | the `(bis)` at the end of each verse is sung as the last couplet (chosen automatically), giving 8 sung lines per verse |
+| 1 | 0.94 | 12 MIDI lines per verse (refrain written out); 1 line in 18 has a count difference over 1 |
+| 2 | 0.94 | |
+| 3 | 0.90 | |
+| 4 | 1.00 | the `(bis)` lines match the MIDI's written-out repeats |
+| 5-7 | 1.00 | hymn 7: line starts at 0.00 / 8.97 / 18.04 / 27.11 / 36.18 / 45.25 s, in a dotted half-quarter rhythm, not steady quarters |
+| 8 | 1.00 | `(bis)` = repeat of the last couplet, as the MIDI shows |
 
-## Per-hymn quality
+## Per-hymn table
 
-agree = independent cross-verse line-start agreement (0.5 means the verses have different line counts, so it can't be checked). rep = repeated-passage consistency.
+kin/midi = number of Kinyarwanda verse entries / number of MIDI verses. offset and scale are the time-map b and a. match = fraction of MIDI onsets with an audio onset within 40 ms.
 
-| hymn | quality | included | verses | agree | rep | note |
-|---|---|---|---|---|---|---|
-| 1 | 0.64 | yes | 2 | 0.67 | 0.86 |  |
-| 2 | 0.96 | yes | 2 | 1.0 | 1.0 |  |
-| 3 | 0.74 | yes | 1 | – | 1.0 |  |
-| 4 | 0.64 | yes | 3 | 0.5 | 0.94 |  |
-| 5 | 0.91 | yes | 5 | 1.0 | 1.0 |  |
-| 6 | 0.88 | yes | 2 | 0.75 | 1.0 |  |
-| 7 | 0.83 | yes | 5 | 0.97 | 0.8 |  |
-| 8 | 0.84 | yes | 3 | 0.96 | 0.8 | (bis)=couplet |
-| 9 | 0.85 | yes | 3 | 0.88 | 1.0 |  |
-| 10 | 0.73 | yes | 3 | 0.5 | – |  |
-| 11 | 0.91 | yes | 6 | 1.0 | – |  |
-| 12 | 0.73 | yes | 1 | – | – |  |
-| 13 | 0.21 | no | 4 | 0.95 | – | period P=55.77s match=0.22 gives 4 repeats for 4 verses |
-| 14 | 0.93 | yes | 4 | 1.0 | – |  |
-| 15 | 0.85 | yes | 4 | 1.0 | 1.0 |  |
-| 16 | 0.87 | yes | 4 | 1.0 | 1.0 |  |
-| 17 | 0.65 | yes | 2 | 0.5 | – | (bis) markers not repeated |
-| 18 | 0.81 | yes | 3 | 1.0 | 1.0 |  |
-| 19 | 0.82 | yes | 3 | 0.96 | 1.0 |  |
-| 20 | 0.92 | yes | 5 | 1.0 | – |  |
-| 21 | 0.58 | no | 5 | 0.92 | 0.0 |  |
-| 22 | 0.51 | no | 3 | 0.5 | 0.5 | (bis) markers not repeated |
-| 23 | 0.68 | yes | 2 | 1.0 | 0.5 | (bis) markers not repeated |
-| 24 | 0.92 | yes | 4 | 1.0 | 1.0 |  |
-| 25 | 0.86 | yes | 3 | 1.0 | 1.0 |  |
-| 26 | 0.66 | yes | 4 | 0.5 | – | (bis) markers not repeated |
-| 27 | 0.79 | yes | 4 | 1.0 | – |  |
-| 28 | 0.84 | yes | 3 | 1.0 | – |  |
-| 29 | 0.21 | no | 4 | 0.9 | – | period P=55.77s match=0.22 gives 4 repeats for 4 verses (bis) markers not repeated |
-| 30 | 0.87 | yes | 4 | 1.0 | – |  |
-| 31 | 0.97 | yes | 6 | 1.0 | 1.0 |  |
-| 32 | 0.74 | yes | 4 | 0.94 | 1.0 |  |
-| 33 | 0.81 | yes | 3 | 1.0 | – |  |
-| 34 | 0.89 | yes | 4 | 1.0 | 1.0 | (bis) markers not repeated |
-| 35 | 0.68 | yes | 3 | 1.0 | 0.0 |  |
-| 36 | 0.68 | yes | 1 | – | – | (bis) markers not repeated |
-| 37 | 0.68 | yes | 1 | – | – |  |
-| 38 | 0.91 | yes | 3 | 1.0 | 1.0 |  |
-| 39 | 0.88 | yes | 3 | 1.0 | 1.0 |  |
-| 40 | 0.66 | yes | 1 | – | 1.0 |  |
-| 41 | 0.90 | yes | 2 | 1.0 | – |  |
-| 42 | 0.88 | yes | 4 | 1.0 | – |  |
-| 43 | 0.91 | yes | 3 | 0.97 | 1.0 |  |
-| 44 | 0.88 | yes | 4 | 0.97 | – |  |
-| 45 | 0.82 | yes | 4 | 1.0 | 1.0 |  |
-| 46 | 0.74 | yes | 5 | 0.9 | 1.0 |  |
-| 47 | 0.86 | yes | 5 | 1.0 | 1.0 |  |
-| 48 | 0.84 | yes | 3 | 0.96 | 1.0 |  |
-| 49 | 0.83 | yes | 3 | 0.96 | 1.0 |  |
-| 50 | 0.88 | yes | 3 | 1.0 | 1.0 |  |
-| 51 | 0.81 | yes | 4 | 0.88 | 1.0 |  |
-| 52 | 0.93 | yes | 4 | 1.0 | – |  |
-| 53 | 0.94 | yes | 3 | 1.0 | – |  |
-| 54 | 0.93 | yes | 4 | 1.0 | – |  |
-| 55 | 0.86 | yes | 2 | 1.0 | 1.0 |  |
-| 56 | 0.83 | yes | 3 | 0.93 | – |  |
-| 57 | 0.93 | yes | 3 | 1.0 | – |  |
-| 58 | 0.91 | yes | 3 | 1.0 | – |  |
-| 59 | 0.91 | yes | 6 | 1.0 | 1.0 | (bis) markers not repeated |
-| 60 | 0.89 | yes | 4 | 0.95 | – |  |
-| 61 | 0.88 | yes | 3 | 0.93 | – |  |
-| 62 | 0.87 | yes | 5 | 1.0 | – |  |
-| 63 | 0.77 | yes | 3 | 1.0 | 1.0 |  |
-| 64 | 0.88 | yes | 4 | 0.8 | 1.0 |  |
-| 65 | 0.86 | yes | 4 | 0.94 | – |  |
-| 66 | 0.81 | yes | 4 | 0.94 | 1.0 |  |
-| 67 | 0.77 | yes | 3 | 0.92 | – |  |
-| 68 | 0.71 | yes | 4 | 0.5 | 0.93 |  |
-| 69 | 0.92 | yes | 3 | 1.0 | – |  |
-| 70 | 0.87 | yes | 4 | 0.75 | 1.0 |  |
-| 71 | 0.89 | yes | 7 | 0.96 | – |  |
-| 72 | 0.78 | yes | 5 | 0.95 | – |  |
-| 73 | 0.97 | yes | 3 | 1.0 | 1.0 |  |
-| 74 | 0.16 | no | 3 | 0.92 | – | period P=65.29s match=0.23 gives 3 repeats for 3 verses |
-| 75 | 0.89 | yes | 3 | 0.93 | – |  |
-| 76 | 0.84 | yes | 6 | 0.93 | – |  |
-| 77 | 0.86 | yes | 2 | 1.0 | 1.0 |  |
-| 78 | 0.90 | yes | 3 | 0.92 | – |  |
-| 79 | 0.76 | yes | 2 | 0.88 | 1.0 |  |
-| 80 | 0.88 | yes | 4 | 0.94 | – |  |
-| 81 | 0.76 | yes | 5 | 0.85 | – |  |
-| 82 | 0.98 | yes | 6 | 1.0 | – |  |
-| 83 | 0.99 | yes | 3 | 1.0 | 1.0 |  |
-| 84 | 0.98 | yes | 3 | 1.0 | 1.0 |  |
-| 85 | 0.72 | yes | 2 | 0.5 | – |  |
-| 86 | 0.94 | yes | 6 | 1.0 | – |  |
-| 87 | 0.99 | yes | 3 | 1.0 | 1.0 |  |
-| 88 | 0.99 | yes | 3 | 1.0 | 1.0 |  |
-| 89 | 0.93 | yes | 6 | 1.0 | – |  |
-| 90 | 0.91 | yes | 5 | 1.0 | – |  |
-| 91 | 0.89 | yes | 3 | 0.93 | – |  |
-| 92 | 0.82 | yes | 4 | 0.93 | 1.0 |  |
-| 93 | 0.97 | yes | 3 | 1.0 | – |  |
-| 94 | 0.61 | yes | 4 | 0.62 | 0.88 |  |
-| 95 | 0.72 | yes | 3 | 1.0 | 1.0 |  |
-| 96 | 0.83 | yes | 7 | 0.91 | – |  |
-| 97 | 0.84 | yes | 3 | 0.96 | 0.67 |  |
-| 98 | 0.90 | yes | 4 | 1.0 | – |  |
-| 99 | 0.77 | yes | 4 | 0.81 | 1.0 |  |
-| 100 | 0.68 | yes | 1 | – | – |  |
-| 101 | 0.62 | yes | 5 | 0.5 | – | refrain from v1 appended to later verses |
-| 102 | 0.86 | yes | 4 | 0.92 | 1.0 |  |
-| 103 | 0.72 | yes | 3 | 0.88 | 1.0 |  |
-| 104 | 0.65 | yes | 2 | 1.0 | 0.67 |  |
-| 105 | 0.65 | yes | 3 | 0.67 | 0.67 | (bis) markers not repeated |
-| 106 | 0.84 | yes | 3 | 0.89 | 1.0 |  |
-| 107 | 0.76 | yes | 3 | 0.92 | – |  |
-| 108 | 0.71 | yes | 1 | – | 1.0 |  |
-| 109 | 0.91 | yes | 3 | 0.96 | 1.0 |  |
-| 110 | 0.50 | no | 5 | 0.5 | 0.46 | refrain from v1 appended to later verses |
-| 111 | 0.60 | yes | 4 | 0.5 | – |  |
-| 112 | 0.78 | yes | 6 | 0.98 | – |  |
-| 113 | 0.74 | yes | 2 | 1.0 | – |  |
-| 114 | 0.86 | yes | 4 | 1.0 | 1.0 |  |
-| 115 | 0.96 | yes | 6 | 0.96 | – |  |
-| 116 | 0.93 | yes | 5 | 1.0 | – |  |
-| 117 | 0.71 | yes | 3 | 0.92 | 1.0 |  |
-| 118 | 0.00 | no | 3 | 0.39 | 0.78 | period P=68.42s match=1.00 gives 2 repeats for 3 verses |
-| 119 | 1.00 | yes | 4 | 1.0 | 1.0 |  |
-| 120 | 0.87 | yes | 3 | 1.0 | – |  |
-| 121 | 0.88 | yes | 4 | 1.0 | – |  |
-| 122 | 0.90 | yes | 4 | 0.94 | – |  |
-| 123 | 0.45 | no | 2 | 0.25 | 0.0 | (bis) markers not repeated |
-| 124 | 0.97 | yes | 3 | 0.96 | 1.0 |  |
-| 125 | 0.94 | yes | 3 | 0.92 | 1.0 | refrain from v1 appended to later verses |
-| 126 | 0.88 | yes | 5 | 0.9 | – |  |
-| 127 | 0.80 | yes | 4 | 1.0 | – |  |
-| 128 | 0.65 | yes | 7 | 0.94 | 0.0 | (bis) markers not repeated |
-| 129 | 0.87 | yes | 5 | 0.96 | – |  |
-| 130 | 0.72 | yes | 4 | 0.7 | – |  |
-| 131 | 0.86 | yes | 5 | 1.0 | 1.0 |  |
-| 132 | 0.94 | yes | 5 | 0.9 | – |  |
-| 133 | 0.84 | yes | 3 | 0.83 | – |  |
-| 134 | 0.91 | yes | 5 | 1.0 | – |  |
-| 135 | 0.95 | yes | 3 | 1.0 | – |  |
-| 136 | 0.89 | yes | 4 | 1.0 | – |  |
-| 137 | 0.78 | yes | 7 | 0.96 | – |  |
-| 138 | 0.90 | yes | 5 | 0.95 | – | (bis) markers not repeated |
-| 139 | 0.90 | yes | 5 | 0.95 | – |  |
-| 140 | 0.67 | yes | 2 | 1.0 | 0.67 |  |
-| 141 | 0.77 | yes | 4 | 0.75 | 1.0 |  |
-| 142 | 0.80 | yes | 2 | 1.0 | 1.0 |  |
-| 143 | 0.88 | yes | 4 | 1.0 | – |  |
-| 144 | 0.80 | yes | 6 | 0.96 | – |  |
-| 145 | 0.77 | yes | 2 | 1.0 | 1.0 |  |
-| 146 | 0.85 | yes | 4 | 1.0 | – |  |
-| 147 | 0.98 | yes | 2 | 1.0 | – |  |
-| 148 | 0.98 | yes | 4 | 1.0 | 1.0 |  |
-| 149 | 0.73 | yes | 2 | 0.88 | 1.0 |  |
-| 150 | 0.90 | yes | 4 | 0.95 | – |  |
-| 151 | 0.98 | yes | 3 | 1.0 | – |  |
-| 152 | 0.80 | yes | 3 | 0.92 | – |  |
-| 153 | 0.75 | yes | 3 | 0.67 | – | (bis) markers not repeated |
-| 154 | 0.93 | yes | 3 | 1.0 | – |  |
-| 155 | 0.99 | yes | 4 | 1.0 | – |  |
-| 156 | 0.93 | yes | 7 | 1.0 | 1.0 |  |
-| 157 | 0.93 | yes | 7 | 0.89 | – |  |
-| 158 | 0.81 | yes | 7 | 0.96 | – |  |
-| 159 | 0.74 | yes | 3 | 1.0 | 0.0 |  |
-| 160 | 0.79 | yes | 4 | 0.69 | 1.0 |  |
-| 161 | 0.83 | yes | 3 | 1.0 | – |  |
-| 162 | 0.69 | yes | 4 | 0.92 | – |  |
-| 163 | 0.94 | yes | 4 | 1.0 | – |  |
-| 164 | 0.84 | yes | 3 | 0.92 | – |  |
-| 165 | 0.85 | yes | 4 | 1.0 | 1.0 |  |
-| 166 | 0.89 | yes | 5 | 0.96 | 1.0 |  |
-| 167 | 0.82 | yes | 2 | 1.0 | 1.0 |  |
-| 168 | 0.99 | yes | 2 | 1.0 | 1.0 |  |
-| 169 | 0.00 | no | 4 | – | – | no alignment; period P=34.89s match=0.63 gives 4 repeats for 4 verses |
-| 170 | 0.94 | yes | 2 | 1.0 | – |  |
-| 171 | 0.90 | yes | 3 | 1.0 | – |  |
-| 172 | 0.75 | yes | 6 | 1.0 | – |  |
-| 173 | 0.24 | no | 3 | 0.5 | 0.86 | period P=89.16s match=0.62 gives 2 repeats for 3 verses |
-| 174 | 0.92 | yes | 3 | 0.96 | – |  |
-| 175 | 0.80 | yes | 5 | 1.0 | – |  |
-| 176 | 0.85 | yes | 4 | 1.0 | 1.0 |  |
-| 177 | 0.85 | yes | 2 | 1.0 | – |  |
-| 178 | 0.78 | yes | 5 | 0.8 | 1.0 |  |
-| 179 | 0.62 | yes | 5 | 0.57 | 0.56 |  |
-| 180 | 0.58 | no | 2 | 0.62 | 0.0 |  |
-| 181 | 0.94 | yes | 4 | 1.0 | 1.0 |  |
-| 182 | 0.93 | yes | 4 | 1.0 | 1.0 |  |
-| 183 | 0.93 | yes | 2 | 1.0 | 1.0 |  |
-| 184 | 0.99 | yes | 4 | 1.0 | – |  |
-| 185 | 0.86 | yes | 3 | 0.97 | 1.0 |  |
-| 186 | 0.94 | yes | 3 | 1.0 | – |  |
-| 187 | 0.57 | no | 2 | 0.75 | 0.0 | (bis) markers not repeated |
-| 188 | 0.79 | yes | 3 | 0.88 | 1.0 |  |
-| 189 | 0.00 | no | 4 | 0.5 | 0.0 | period P=30.70s match=1.00 gives 5 repeats for 4 verses |
-| 190 | 0.73 | yes | 5 | 0.93 | 1.0 |  |
-| 191 | 0.71 | yes | 7 | 0.82 | – |  |
-| 192 | 0.70 | yes | 3 | 0.75 | 1.0 |  |
-| 193 | 0.81 | yes | 5 | 1.0 | – |  |
-| 194 | 0.92 | yes | 3 | 1.0 | – |  |
-| 195 | 0.93 | yes | 4 | 1.0 | 1.0 |  |
-| 196 | 0.95 | yes | 3 | 1.0 | – |  |
-| 197 | 0.94 | yes | 2 | 1.0 | 1.0 |  |
-| 198 | 0.81 | yes | 6 | 1.0 | – |  |
-| 199 | 0.99 | yes | 5 | 1.0 | 1.0 |  |
-| 200 | 0.88 | yes | 3 | 1.0 | 1.0 |  |
-| 200bis | 0.00 | no |  | – | – | no lyrics in songs.json |
-| 201 | 0.87 | yes | 4 | 1.0 | – |  |
-| 202 | 0.72 | yes | 3 | 0.75 | – |  |
-| 203 | 0.65 | yes | 3 | 0.5 | – |  |
-| 204 | 0.82 | yes | 3 | 1.0 | – |  |
-| 205 | 0.93 | yes | 5 | 1.0 | 1.0 |  |
-| 206 | 0.92 | yes | 3 | 1.0 | – |  |
-| 207 | 0.90 | yes | 3 | 0.92 | – |  |
-| 208 | 0.88 | yes | 7 | 0.93 | – |  |
-| 209 | 0.97 | yes | 3 | 1.0 | 1.0 |  |
-| 210 | 0.98 | yes | 6 | 1.0 | – |  |
-| 211 | 0.83 | yes | 5 | 0.95 | – |  |
-| 212 | 0.86 | yes | 4 | 1.0 | – |  |
-| 213 | 0.77 | yes | 5 | 0.82 | 1.0 |  |
-| 214 | 0.95 | yes | 3 | 1.0 | 1.0 |  |
-| 215 | 0.90 | yes | 6 | 1.0 | 0.92 |  |
-| 216 | 0.60 | yes | 5 | 0.8 | 0.0 | (bis) markers not repeated |
-| 217 | 0.06 | no | 5 | 0.7 | 0.0 | period P=44.14s match=0.51 gives 5 repeats for 5 verses |
-| 218 | 0.71 | yes | 4 | 0.5 | – |  |
-| 219 | 0.51 | no | 5 | 0.7 | 0.0 |  |
-| 220 | 0.81 | yes | 4 | 0.91 | – |  |
-| 221 | 0.98 | yes | 7 | 1.0 | – |  |
-| 222 | 0.81 | yes | 4 | 0.94 | – |  |
-| 223 | 0.80 | yes | 3 | 0.79 | 1.0 |  |
-| 224 | 0.75 | yes | 6 | 0.88 | – |  |
-| 225 | 0.66 | yes | 1 | – | – |  |
-| 226 | 0.69 | yes | 4 | 0.72 | – |  |
-| 227 | 0.55 | no | 4 | 1.0 | 0.0 |  |
-| 228 | 0.79 | yes | 4 | 0.69 | – | (bis) markers not repeated |
-| 229 | 0.86 | yes | 5 | 0.95 | – |  |
-| 230 | 0.78 | yes | 3 | 0.96 | – |  |
-| 231 | 0.96 | yes | 3 | 1.0 | – |  |
-| 232 | 0.99 | yes | 3 | 1.0 | – |  |
-| 233 | 0.81 | yes | 4 | 0.91 | 1.0 |  |
-| 234 | 0.97 | yes | 3 | 1.0 | – |  |
-| 235 | 0.84 | yes | 3 | 0.96 | – |  |
-| 236 | 0.97 | yes | 4 | 1.0 | 1.0 |  |
-| 237 | 0.84 | yes | 3 | 0.94 | 1.0 |  |
-| 238 | 0.95 | yes | 3 | 1.0 | – |  |
-| 239 | 0.79 | yes | 4 | 0.94 | – |  |
-| 240 | 0.90 | yes | 3 | 0.94 | 1.0 | refrain from v1 appended to later verses |
-| 241 | 0.94 | yes | 5 | 1.0 | – |  |
-| 242 | 0.74 | yes | 4 | 0.88 | 1.0 |  |
-| 243 | 0.64 | yes | 4 | 0.44 | 1.0 |  |
-| 244 | 0.76 | yes | 3 | 0.92 | 1.0 |  |
-| 245 | 0.84 | yes | 5 | 0.9 | – |  |
-| 246 | 0.00 | no | 3 | 0.5 | 0.44 | period P=38.68s match=1.00 gives 4 repeats for 3 verses |
-| 247 | 0.73 | yes | 4 | 0.75 | 1.0 |  |
-| 248 | 0.79 | yes | 4 | 0.97 | 0.5 |  |
-| 249 | 0.93 | yes | 5 | 0.9 | – |  |
-| 250 | 0.21 | no | 4 | 0.08 | 0.67 | period P=54.31s match=0.58 gives 4 repeats for 4 verses |
-| 251 | 0.98 | yes | 3 | 1.0 | – |  |
-| 252 | 0.24 | no | 3 | 0.42 | 0.4 | period P=34.90s match=0.54 gives 3 repeats for 3 verses |
-| 253 | 0.80 | yes | 4 | 0.97 | 1.0 |  |
-| 254 | 0.82 | yes | 3 | 0.89 | 1.0 |  |
-| 255 | 0.78 | yes | 5 | 0.95 | – |  |
-| 256 | 0.77 | yes | 4 | 0.97 | 1.0 | refrain from v1 appended to later verses |
-| 257 | 0.00 | no | 6 | 0.5 | 0.95 | period P=50.34s match=1.00 gives 5 repeats for 6 verses |
-| 258 | 0.89 | yes | 3 | 0.92 | – | (bis) markers not repeated |
-| 259 | 0.84 | yes | 2 | 0.88 | 1.0 |  |
-| 260 | 0.77 | yes | 6 | 0.83 | – | (bis) markers not repeated |
-| 261 | 0.63 | yes | 4 | 0.5 | 0.71 |  |
-| 262 | 0.78 | yes | 5 | 0.9 | – |  |
-| 263 | 0.81 | yes | 3 | 0.96 | 1.0 | refrain from v1 appended to later verses |
-| 264 | 0.22 | no | 3 | 1.0 | 1.0 | period P=68.58s match=0.08 gives 2 repeats for 3 verses |
-| 265 | 0.94 | yes | 4 | 1.0 | – | refrain from v1 appended to later verses |
-| 266 | 0.96 | yes | 3 | 1.0 | 1.0 |  |
-| 267 | 0.00 | no | 5 | 0.5 | 0.55 | period P=42.96s match=1.00 gives 4 repeats for 5 verses |
-| 268 | 0.72 | yes | 3 | 0.93 | 0.4 |  |
-| 269 | 0.94 | yes | 3 | 1.0 | – |  |
-| 270 | 0.85 | yes | 4 | 0.97 | – |  |
-| 271 | 0.86 | yes | 4 | 1.0 | – |  |
+| hymn | quality | included | kin/midi | offset s | scale | match | rms ms | notes |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 0.94 | yes | 2/2 | -2.494 | 0.99998 | 1.0 | 4.8 |  |
+| 2 | 0.94 | yes | 2/2 | -1.595 | 1.00000 | 1.0 | 4.3 |  |
+| 3 | 0.90 | yes | 1/1 | -1.595 | 1.00000 | 1.0 | 4.4 |  |
+| 4 | 1.00 | yes | 3/3 | -3.097 | 1.00000 | 1.0 | 3.8 |  |
+| 5 | 1.00 | yes | 5/5 | -2.347 | 1.00000 | 1.0 | 3.9 |  |
+| 6 | 1.00 | yes | 2/2 | -0.097 | 1.00001 | 1.0 | 4.1 |  |
+| 7 | 1.00 | yes | 5/5 | -2.346 | 1.00000 | 1.0 | 4.0 |  |
+| 8 | 1.00 | yes | 3/3 | -2.347 | 1.00000 | 1.0 | 4.2 | v1: repeats ['couplet']; v2: repeats ['couplet']; v3: repeats ['couplet'] |
+| 9 | 1.00 | yes | 3/3 | -2.098 | 1.00001 | 1.0 | 4.1 |  |
+| 10 | 1.00 | yes | 3/3 | -3.097 | 1.00000 | 0.988 | 4.7 | v3: repeats ['line', 'none'] |
+| 11 | 1.00 | yes | 6/6 | -2.497 | 1.00000 | 1.0 | 4.7 |  |
+| 12 | 1.00 | yes | 1/1 | -1.695 | 0.99996 | 1.0 | 4.0 |  |
+| 13 | 1.00 | yes | 4/4 | -2.096 | 1.00000 | 0.996 | 4.6 |  |
+| 14 | 1.00 | yes | 4/4 | -2.764 | 1.00000 | 1.0 | 3.7 |  |
+| 15 | 1.00 | yes | 4/4 | -0.954 | 1.00000 | 1.0 | 4.3 |  |
+| 16 | 1.00 | yes | 4/4 | -2.097 | 1.00000 | 1.0 | 4.6 |  |
+| 17 | 0.94 | yes | 2/2 | -2.497 | 1.00001 | 1.0 | 4.6 | v1: repeats ['none']; v2: repeats ['line', 'none'] |
+| 18 | 1.00 | yes | 3/3 | -2.498 | 0.99999 | 1.0 | 2.9 |  |
+| 19 | 1.00 | yes | 3/3 | -0.098 | 1.00000 | 1.0 | 2.9 |  |
+| 20 | 1.00 | yes | 5/5 | -0.096 | 1.00000 | 1.0 | 3.4 |  |
+| 21 | 1.00 | yes | 5/5 | -2.495 | 1.00000 | 1.0 | 4.2 |  |
+| 22 | 1.00 | yes | 3/3 | -2.867 | 1.00000 | 1.0 | 3.6 | v3: repeats ['couplet', 'line'] |
+| 23 | 1.00 | yes | 2/2 | -2.867 | 1.00000 | 1.0 | 3.6 |  |
+| 24 | 1.00 | yes | 4/4 | -0.098 | 1.00000 | 1.0 | 3.6 |  |
+| 25 | 1.00 | yes | 3/3 | -0.097 | 0.99999 | 1.0 | 3.2 |  |
+| 26 | 0.88 | yes | 4/4 | -0.098 | 1.00000 | 1.0 | 3.9 |  |
+| 27 | 1.00 | yes | 4/4 | -0.096 | 1.00000 | 1.0 | 3.6 |  |
+| 28 | 1.00 | yes | 3/3 | +3.331 | 1.00000 | 0.767 | 4.0 |  |
+| 29 | 1.00 | yes | 4/4 | -2.096 | 1.00000 | 0.996 | 4.6 | v1: repeats ['none'] |
+| 30 | 1.00 | yes | 4/4 | -0.097 | 1.00000 | 1.0 | 4.5 |  |
+| 31 | 1.00 | yes | 6/6 | -0.097 | 1.00000 | 1.0 | 3.5 |  |
+| 32 | 1.00 | yes | 4/4 | -2.669 | 1.00000 | 1.0 | 3.2 |  |
+| 33 | 1.00 | yes | 3/3 | -4.098 | 1.00000 | 1.0 | 4.1 |  |
+| 34 | 1.00 | yes | 4/4 | -1.507 | 0.99999 | 0.652 | 3.7 |  |
+| 35 | 1.00 | yes | 3/3 | -3.733 | 1.00000 | 1.0 | 3.8 |  |
+| 36 | 1.00 | yes | 1/1 | -3.098 | 1.00001 | 1.0 | 3.1 | v1: repeats ['none'] |
+| 37 | 1.00 | yes | 1/1 | -3.098 | 1.00001 | 1.0 | 3.1 |  |
+| 38 | 1.00 | yes | 3/3 | -3.097 | 1.00000 | 1.0 | 4.0 |  |
+| 39 | 1.00 | yes | 3/3 | -1.597 | 1.00000 | 1.0 | 3.4 |  |
+| 40 | 1.00 | yes | 1/1 | -3.295 | 0.99995 | 1.0 | 3.3 |  |
+| 41 | 1.00 | yes | 2/2 | -2.707 | 1.00001 | 1.0 | 3.9 |  |
+| 42 | 1.00 | yes | 4/4 | -0.894 | 0.99999 | 1.0 | 4.4 |  |
+| 43 | 1.00 | yes | 3/3 | -2.495 | 1.00000 | 1.0 | 3.9 |  |
+| 44 | 1.00 | yes | 4/4 | -1.598 | 1.00000 | 1.0 | 5.0 |  |
+| 45 | 1.00 | yes | 4/4 | -2.498 | 1.00000 | 1.0 | 2.8 |  |
+| 46 | 1.00 | yes | 5/5 | -2.669 | 1.00000 | 1.0 | 3.3 |  |
+| 47 | 1.00 | yes | 5/5 | -2.097 | 1.00000 | 1.0 | 4.8 |  |
+| 48 | 1.00 | yes | 3/3 | -1.898 | 1.00000 | 1.0 | 4.1 |  |
+| 49 | 1.00 | yes | 3/3 | -0.097 | 1.00002 | 1.0 | 3.9 |  |
+| 50 | 1.00 | yes | 3/3 | -3.097 | 1.00001 | 1.0 | 3.5 |  |
+| 51 | 1.00 | yes | 4/4 | -0.848 | 1.00000 | 0.914 | 3.0 |  |
+| 52 | 1.00 | yes | 4/4 | -0.097 | 1.00000 | 1.0 | 3.8 |  |
+| 53 | 1.00 | yes | 3/3 | -2.763 | 1.00000 | 1.0 | 4.2 |  |
+| 54 | 1.00 | yes | 4/4 | -2.495 | 1.00000 | 1.0 | 3.7 |  |
+| 55 | 1.00 | yes | 2/2 | -0.849 | 1.00001 | 0.92 | 3.2 |  |
+| 56 | 1.00 | yes | 3/3 | -0.096 | 1.00001 | 1.0 | 4.6 |  |
+| 57 | 1.00 | yes | 3/3 | -2.765 | 1.00000 | 1.0 | 3.5 |  |
+| 58 | 1.00 | yes | 3/3 | -2.497 | 1.00001 | 1.0 | 4.6 |  |
+| 59 | 1.00 | yes | 6/11 | -3.297 | 1.00000 | 1.0 | 3.5 | Kinyarwanda verse(s) 2-2 <-> MIDI verse(s) 2-3; Kinyarwanda verse(s) 3-3 <-> MIDI verse(s) 4-5; Kinyarwanda verse(s) 4-4 <-> MIDI verse(s) 6-7; Kinyarwanda verse(s) 5-5 <-> MIDI verse(s) 8-9; Kinyarwanda verse(s) 6-6 <-> MIDI verse(s) 10-11; verse count differs: 6 Kinyarwanda entries vs 11 MIDI verses |
+| 60 | 1.00 | yes | 4/4 | -2.765 | 1.00000 | 1.0 | 3.6 |  |
+| 61 | 1.00 | yes | 3/3 | -3.098 | 0.99999 | 1.0 | 3.3 |  |
+| 62 | 1.00 | yes | 5/5 | -2.097 | 1.00000 | 1.0 | 3.6 |  |
+| 63 | 1.00 | yes | 3/3 | -2.347 | 1.00000 | 1.0 | 3.7 |  |
+| 64 | 1.00 | yes | 4/4 | -0.095 | 1.00000 | 1.0 | 4.8 |  |
+| 65 | 0.94 | yes | 4/4 | -0.095 | 0.99998 | 1.0 | 3.7 |  |
+| 66 | 1.00 | yes | 4/4 | -2.346 | 1.00000 | 1.0 | 3.4 |  |
+| 67 | 1.00 | yes | 3/3 | +2.672 | 1.00000 | 0.761 | 3.8 |  |
+| 68 | 0.97 | yes | 4/4 | -3.526 | 1.00000 | 1.0 | 3.4 |  |
+| 69 | 1.00 | yes | 3/3 | -1.508 | 1.00000 | 1.0 | 3.3 |  |
+| 70 | 1.00 | yes | 4/4 | -0.097 | 1.00000 | 1.0 | 4.6 |  |
+| 71 | 1.00 | yes | 7/7 | -1.597 | 1.00000 | 1.0 | 2.8 |  |
+| 72 | 1.00 | yes | 5/5 | -0.096 | 1.00000 | 1.0 | 3.5 |  |
+| 73 | 1.00 | yes | 3/3 | -0.896 | 1.00000 | 1.0 | 4.3 |  |
+| 74 | 1.00 | yes | 3/3 | -2.346 | 1.00001 | 0.994 | 4.5 |  |
+| 75 | 1.00 | yes | 3/3 | -0.098 | 1.00000 | 1.0 | 3.7 |  |
+| 76 | 1.00 | yes | 6/6 | -0.894 | 1.00000 | 1.0 | 4.4 |  |
+| 77 | 1.00 | yes | 2/2 | -0.849 | 1.00001 | 0.92 | 3.2 |  |
+| 78 | 1.00 | yes | 3/3 | -1.508 | 0.99998 | 0.99 | 3.5 |  |
+| 79 | 1.00 | yes | 2/2 | -2.347 | 0.99999 | 1.0 | 3.2 |  |
+| 80 | 1.00 | yes | 4/4 | -1.597 | 1.00000 | 1.0 | 2.8 |  |
+| 81 | 1.00 | yes | 5/5 | +2.672 | 1.00000 | 0.751 | 4.0 |  |
+| 82 | 1.00 | yes | 6/6 | -1.429 | 0.99999 | 1.0 | 3.8 |  |
+| 83 | 1.00 | yes | 3/3 | -1.991 | 1.00000 | 1.0 | 4.0 |  |
+| 84 | 1.00 | yes | 3/3 | -0.846 | 1.00000 | 1.0 | 3.8 |  |
+| 85 | 1.00 | yes | 2/2 | -1.598 | 1.00002 | 1.0 | 4.8 |  |
+| 86 | 1.00 | yes | 6/6 | -2.495 | 1.00000 | 1.0 | 3.5 |  |
+| 87 | 1.00 | yes | 3/3 | -1.297 | 0.99999 | 1.0 | 3.9 |  |
+| 88 | 1.00 | yes | 3/3 | -1.297 | 0.99999 | 1.0 | 3.9 |  |
+| 89 | 0.98 | yes | 6/6 | -2.350 | 1.00000 | 0.76 | 3.5 | 1 syllables fall before the audio file starts (clipped to 0 ms) |
+| 90 | 1.00 | yes | 5/5 | -2.497 | 1.00000 | 1.0 | 4.6 |  |
+| 91 | 0.93 | yes | 3/3 | -0.098 | 1.00000 | 1.0 | 3.8 |  |
+| 92 | 1.00 | yes | 4/4 | -1.360 | 1.00000 | 1.0 | 4.3 |  |
+| 93 | 1.00 | yes | 3/3 | -0.763 | 0.99999 | 1.0 | 5.1 |  |
+| 94 | 0.84 | yes | 4/4 | -0.847 | 1.00000 | 1.0 | 3.6 |  |
+| 95 | 0.92 | yes | 3/3 | -1.509 | 0.99999 | 1.0 | 3.3 |  |
+| 96 | 1.00 | yes | 7/7 | -0.845 | 1.00000 | 1.0 | 4.3 |  |
+| 97 | 1.00 | yes | 3/3 | -2.669 | 1.00000 | 0.994 | 4.6 |  |
+| 98 | 1.00 | yes | 4/4 | -2.345 | 1.00000 | 1.0 | 4.6 |  |
+| 99 | 0.94 | yes | 4/4 | -2.097 | 1.00000 | 1.0 | 4.8 |  |
+| 100 | 1.00 | yes | 1/1 | -0.697 | 0.99998 | 1.0 | 3.6 |  |
+| 101 | 0.97 | yes | 5/5 | -0.096 | 1.00000 | 1.0 | 4.7 | v5: refrain from verse 1 appended |
+| 102 | 1.00 | yes | 4/4 | -1.597 | 1.00000 | 1.0 | 4.2 |  |
+| 103 | 1.00 | yes | 3/3 | -2.347 | 1.00000 | 1.0 | 3.1 |  |
+| 104 | 1.00 | yes | 2/2 | -2.098 | 1.00001 | 1.0 | 3.8 |  |
+| 105 | 1.00 | yes | 3/3 | -1.763 | 0.99999 | 0.993 | 5.0 | v1: repeats ['couplet']; v2: repeats ['couplet']; v3: repeats ['couplet'] |
+| 106 | 1.00 | yes | 3/3 | -1.595 | 0.99999 | 1.0 | 3.8 |  |
+| 107 | 1.00 | yes | 3/3 | -0.096 | 1.00000 | 1.0 | 3.5 |  |
+| 108 | 1.00 | yes | 1/1 | -3.098 | 1.00003 | 1.0 | 4.1 |  |
+| 109 | 1.00 | yes | 3/3 | -1.809 | 1.00000 | 1.0 | 4.8 |  |
+| 110 | 0.93 | yes | 5/5 | -1.762 | 1.00000 | 0.998 | 3.9 | v2: refrain from verse 1 appended; v3: refrain from verse 1 appended; v4: refrain from verse 1 appended; v5: refrain from verse 1 appended |
+| 111 | 0.77 | yes | 4/4 | -1.595 | 0.99999 | 1.0 | 4.7 |  |
+| 112 | 0.95 | yes | 6/6 | -0.097 | 1.00000 | 0.996 | 4.6 |  |
+| 113 | 1.00 | yes | 2/2 | -1.430 | 1.00000 | 1.0 | 3.8 |  |
+| 114 | 1.00 | yes | 4/4 | -0.097 | 1.00000 | 1.0 | 3.3 |  |
+| 115 | 1.00 | yes | 6/6 | -1.430 | 1.00000 | 1.0 | 4.1 |  |
+| 116 | 1.00 | yes | 5/5 | -0.096 | 1.00000 | 1.0 | 3.7 |  |
+| 117 | 1.00 | yes | 3/3 | -2.346 | 1.00000 | 1.0 | 3.5 |  |
+| 118 | 0.67 | yes | 3/2 | -1.763 | 1.00000 | 0.994 | 3.5 | Kinyarwanda verse 3 has no MIDI verse (no events); verse count differs: 3 Kinyarwanda entries vs 2 MIDI verses |
+| 119 | 1.00 | yes | 4/4 | -2.348 | 0.99999 | 1.0 | 3.3 |  |
+| 120 | 1.00 | yes | 3/3 | -2.096 | 0.99999 | 1.0 | 3.8 |  |
+| 121 | 1.00 | yes | 4/4 | -1.508 | 1.00000 | 1.0 | 4.1 |  |
+| 122 | 1.00 | yes | 4/4 | -0.098 | 1.00000 | 1.0 | 4.9 |  |
+| 123 | 1.00 | yes | 2/2 | -2.344 | 1.00000 | 1.0 | 4.3 |  |
+| 124 | 1.00 | yes | 3/3 | -0.097 | 1.00000 | 1.0 | 4.0 |  |
+| 125 | 1.00 | yes | 3/3 | -1.971 | 1.00000 | 0.991 | 4.2 | v2: refrain from verse 1 appended; v3: refrain from verse 1 appended |
+| 126 | 1.00 | yes | 5/5 | -0.096 | 0.99999 | 1.0 | 4.1 |  |
+| 127 | 1.00 | yes | 4/4 | -0.096 | 1.00000 | 1.0 | 3.5 |  |
+| 128 | 1.00 | yes | 7/7 | -2.214 | 1.00000 | 0.997 | 4.2 |  |
+| 129 | 1.00 | yes | 5/5 | -0.894 | 1.00000 | 1.0 | 4.4 |  |
+| 130 | 1.00 | yes | 4/4 | -0.097 | 1.00001 | 1.0 | 3.5 |  |
+| 131 | 1.00 | yes | 5/5 | -2.097 | 1.00000 | 1.0 | 4.9 |  |
+| 132 | 0.95 | yes | 5/5 | -0.096 | 1.00000 | 1.0 | 3.3 |  |
+| 133 | 1.00 | yes | 3/3 | -1.597 | 0.99999 | 1.0 | 2.9 |  |
+| 134 | 1.00 | yes | 5/5 | -1.597 | 1.00000 | 1.0 | 2.9 |  |
+| 135 | 1.00 | yes | 3/3 | -0.096 | 0.99999 | 1.0 | 4.9 |  |
+| 136 | 1.00 | yes | 4/4 | -4.096 | 1.00000 | 1.0 | 3.7 |  |
+| 137 | 1.00 | yes | 7/7 | -2.096 | 1.00000 | 1.0 | 3.6 |  |
+| 138 | 1.00 | yes | 5/5 | -2.922 | 1.00000 | 1.0 | 4.6 |  |
+| 139 | 1.00 | yes | 5/5 | -0.096 | 0.99999 | 1.0 | 4.1 |  |
+| 140 | 1.00 | yes | 2/2 | -2.099 | 1.00002 | 1.0 | 3.6 |  |
+| 141 | 1.00 | yes | 4/4 | -1.972 | 1.00000 | 1.0 | 4.1 |  |
+| 142 | 1.00 | yes | 2/2 | -2.349 | 1.00000 | 1.0 | 2.9 |  |
+| 143 | 1.00 | yes | 4/4 | -2.213 | 1.00000 | 0.667 | 3.4 |  |
+| 144 | 0.96 | yes | 6/6 | -1.695 | 1.00000 | 0.974 | 4.4 |  |
+| 145 | 1.00 | yes | 2/2 | -2.347 | 1.00001 | 1.0 | 3.5 |  |
+| 146 | 1.00 | yes | 4/4 | -1.834 | 1.00000 | 1.0 | 3.9 |  |
+| 147 | 1.00 | yes | 2/2 | -0.098 | 1.00003 | 1.0 | 4.3 |  |
+| 148 | 1.00 | yes | 4/4 | -1.598 | 1.00000 | 1.0 | 4.1 |  |
+| 149 | 1.00 | yes | 2/2 | -0.096 | 1.00001 | 1.0 | 3.8 |  |
+| 150 | 1.00 | yes | 4/4 | -3.099 | 1.00000 | 1.0 | 3.2 |  |
+| 151 | 1.00 | yes | 3/3 | -2.097 | 1.00000 | 1.0 | 4.2 |  |
+| 152 | 1.00 | yes | 3/4 | -0.927 | 0.99999 | 0.766 | 4.0 | Kinyarwanda verse(s) 3-3 <-> MIDI verse(s) 3-4; verse count differs: 3 Kinyarwanda entries vs 4 MIDI verses |
+| 153 | 0.93 | yes | 3/3 | -2.096 | 1.00000 | 1.0 | 3.9 |  |
+| 154 | 0.92 | yes | 3/3 | -3.098 | 1.00000 | 1.0 | 3.5 |  |
+| 155 | 1.00 | yes | 4/4 | -2.347 | 1.00000 | 1.0 | 3.4 |  |
+| 156 | 1.00 | yes | 7/7 | -0.096 | 1.00000 | 1.0 | 4.7 |  |
+| 157 | 0.96 | yes | 7/7 | -1.429 | 1.00000 | 0.783 | 4.2 |  |
+| 158 | 1.00 | yes | 7/7 | -1.695 | 0.99999 | 0.974 | 4.6 |  |
+| 159 | 1.00 | yes | 3/3 | -2.213 | 1.00000 | 1.0 | 4.4 |  |
+| 160 | 1.00 | yes | 4/4 | -1.596 | 1.00000 | 1.0 | 3.8 |  |
+| 161 | 1.00 | yes | 3/3 | -1.297 | 1.00000 | 1.0 | 4.3 |  |
+| 162 | 1.00 | yes | 4/4 | -2.095 | 0.99999 | 1.0 | 3.7 |  |
+| 163 | 0.96 | yes | 4/4 | -0.096 | 0.99999 | 1.0 | 4.0 |  |
+| 164 | 1.00 | yes | 3/3 | -2.214 | 0.99997 | 1.0 | 3.3 |  |
+| 165 | 1.00 | yes | 4/4 | -2.213 | 1.00000 | 1.0 | 4.1 |  |
+| 166 | 1.00 | yes | 5/5 | -0.095 | 1.00000 | 1.0 | 4.8 |  |
+| 167 | 1.00 | yes | 2/2 | -2.214 | 1.00000 | 1.0 | 3.9 |  |
+| 168 | 1.00 | yes | 2/2 | -0.096 | 0.99999 | 1.0 | 4.0 |  |
+| 169 | 1.00 | yes | 4/4 | -1.810 | 1.00002 | 0.853 | 5.1 |  |
+| 170 | 1.00 | yes | 2/2 | -2.215 | 1.00002 | 0.792 | 3.6 |  |
+| 171 | 1.00 | yes | 3/3 | -2.495 | 1.00000 | 1.0 | 3.4 |  |
+| 172 | 1.00 | yes | 6/6 | -1.595 | 1.00000 | 0.996 | 3.5 |  |
+| 173 | 0.44 | no | 3/3 | -1.576 | 0.99986 | 0.581 | 13.3 | v1: repeats ['couplet']; v2: repeats ['couplet']; v3: repeats ['couplet']; weak MIDI/audio match |
+| 174 | 1.00 | yes | 3/3 | +2.570 | 1.00000 | 0.755 | 4.6 |  |
+| 175 | 1.00 | yes | 5/5 | -1.695 | 1.00001 | 0.974 | 4.6 |  |
+| 176 | 0.98 | yes | 4/4 | -3.847 | 1.00000 | 0.815 | 3.4 | 1 syllables fall before the audio file starts (clipped to 0 ms) |
+| 177 | 1.00 | yes | 2/2 | -1.508 | 0.99999 | 1.0 | 3.6 |  |
+| 178 | 1.00 | yes | 5/5 | -2.094 | 1.00000 | 1.0 | 4.8 |  |
+| 179 | 1.00 | yes | 5/5 | -0.728 | 0.99999 | 0.616 | 3.6 | v1: repeats ['couplet']; v2: repeats ['couplet']; v3: repeats ['couplet']; v4: repeats ['couplet']; v5: repeats ['couplet'] |
+| 180 | 1.00 | yes | 2/2 | -1.812 | 1.00001 | 1.0 | 3.8 |  |
+| 181 | 0.96 | yes | 4/4 | -2.096 | 1.00000 | 1.0 | 4.4 |  |
+| 182 | 1.00 | yes | 4/4 | -2.094 | 1.00000 | 1.0 | 4.7 |  |
+| 183 | 0.94 | yes | 2/2 | -1.430 | 1.00000 | 1.0 | 3.9 |  |
+| 184 | 1.00 | yes | 4/4 | -2.496 | 1.00000 | 1.0 | 2.7 |  |
+| 185 | 1.00 | yes | 3/3 | -1.507 | 1.00001 | 1.0 | 3.9 |  |
+| 186 | 1.00 | yes | 3/3 | -2.095 | 1.00000 | 1.0 | 5.0 |  |
+| 187 | 1.00 | yes | 2/2 | -2.214 | 1.00000 | 1.0 | 4.7 |  |
+| 188 | 0.95 | yes | 3/3 | -3.470 | 1.00000 | 0.743 | 3.3 | 2 syllables fall before the audio file starts (clipped to 0 ms) |
+| 189 | 0.95 | yes | 4/5 | -0.096 | 1.00000 | 1.0 | 4.0 | Kinyarwanda verse(s) 2-2 <-> MIDI verse(s) 2-3; verse count differs: 4 Kinyarwanda entries vs 5 MIDI verses |
+| 190 | 1.00 | yes | 5/5 | -2.096 | 1.00000 | 1.0 | 3.5 |  |
+| 191 | 1.00 | yes | 7/7 | -1.596 | 1.00000 | 1.0 | 4.0 |  |
+| 192 | 1.00 | yes | 3/3 | -2.429 | 1.00000 | 0.995 | 3.2 |  |
+| 193 | 0.95 | yes | 5/5 | -1.507 | 0.99999 | 1.0 | 3.6 |  |
+| 194 | 1.00 | yes | 3/3 | -2.498 | 1.00000 | 1.0 | 4.0 |  |
+| 195 | 1.00 | yes | 4/4 | -2.213 | 1.00000 | 1.0 | 4.0 |  |
+| 196 | 0.92 | yes | 3/3 | -2.213 | 1.00001 | 1.0 | 4.9 |  |
+| 197 | 1.00 | yes | 2/2 | -2.214 | 1.00001 | 0.983 | 4.5 |  |
+| 198 | 1.00 | yes | 6/6 | -2.763 | 1.00001 | 0.99 | 3.7 |  |
+| 199 | 1.00 | yes | 5/5 | -2.213 | 1.00000 | 0.672 | 3.6 |  |
+| 200 | 0.97 | yes | 3/3 | -5.350 | 1.00000 | 0.872 | 7.5 | 1 syllables fall before the audio file starts (clipped to 0 ms) |
+| 200bis | 0.00 | no | –/– | +nan | nan | – | – | no lyrics in songs.json |
+| 201 | 1.00 | yes | 4/4 | -2.289 | 1.00000 | 0.994 | 3.9 |  |
+| 202 | 1.00 | yes | 3/3 | -1.595 | 1.00001 | 0.994 | 4.3 |  |
+| 203 | 1.00 | yes | 3/3 | -2.498 | 1.00000 | 1.0 | 3.6 |  |
+| 204 | 1.00 | yes | 3/3 | -1.694 | 0.99998 | 0.973 | 4.5 |  |
+| 205 | 1.00 | yes | 5/5 | -2.095 | 0.99999 | 1.0 | 4.8 |  |
+| 206 | 1.00 | yes | 3/3 | -2.215 | 1.00001 | 1.0 | 3.4 |  |
+| 207 | 0.92 | yes | 3/3 | -2.346 | 1.00001 | 0.984 | 6.4 |  |
+| 208 | 1.00 | yes | 7/7 | -1.596 | 1.00000 | 1.0 | 3.9 |  |
+| 209 | 0.96 | yes | 3/3 | -0.095 | 1.00000 | 1.0 | 4.1 |  |
+| 210 | 0.96 | yes | 6/6 | -1.296 | 1.00000 | 1.0 | 3.3 |  |
+| 211 | 1.00 | yes | 5/5 | -0.848 | 1.00000 | 1.0 | 3.5 |  |
+| 212 | 1.00 | yes | 4/4 | -1.187 | 1.00001 | 1.0 | 4.7 |  |
+| 213 | 1.00 | yes | 5/5 | -2.496 | 1.00000 | 1.0 | 4.7 |  |
+| 214 | 1.00 | yes | 3/3 | -2.213 | 1.00000 | 1.0 | 4.0 |  |
+| 215 | 1.00 | yes | 6/6 | -2.823 | 1.00000 | 1.0 | 4.3 |  |
+| 216 | 1.00 | yes | 5/5 | -2.095 | 1.00000 | 1.0 | 4.0 |  |
+| 217 | 0.95 | yes | 5/5 | -4.591 | 1.00000 | 0.687 | 6.4 | 2 syllables fall before the audio file starts (clipped to 0 ms) |
+| 218 | 1.00 | yes | 4/4 | -2.214 | 1.00000 | 1.0 | 3.8 |  |
+| 219 | 1.00 | yes | 5/5 | -1.595 | 1.00000 | 0.991 | 3.7 |  |
+| 220 | 1.00 | yes | 4/4 | -2.345 | 1.00000 | 0.969 | 4.2 |  |
+| 221 | 1.00 | yes | 7/7 | -2.498 | 1.00000 | 1.0 | 3.6 |  |
+| 222 | 1.00 | yes | 4/4 | -1.895 | 1.00000 | 1.0 | 4.2 |  |
+| 223 | 0.96 | yes | 3/3 | -2.496 | 1.00000 | 1.0 | 3.9 |  |
+| 224 | 1.00 | yes | 6/6 | -2.096 | 1.00000 | 1.0 | 4.9 |  |
+| 225 | 0.78 | yes | 1/1 | -2.214 | 1.00000 | 1.0 | 3.5 |  |
+| 226 | 1.00 | yes | 4/4 | -4.094 | 1.00000 | 1.0 | 4.7 |  |
+| 227 | 1.00 | yes | 4/4 | -1.762 | 1.00000 | 0.995 | 4.7 |  |
+| 228 | 1.00 | yes | 4/4 | -1.761 | 0.99999 | 0.995 | 3.8 |  |
+| 229 | 1.00 | yes | 5/5 | -1.895 | 1.00000 | 1.0 | 5.1 |  |
+| 230 | 1.00 | yes | 3/3 | -2.918 | 1.00000 | 1.0 | 3.5 |  |
+| 231 | 1.00 | yes | 3/3 | -2.095 | 1.00000 | 1.0 | 4.7 |  |
+| 232 | 0.96 | yes | 3/3 | -2.215 | 1.00000 | 1.0 | 4.1 |  |
+| 233 | 0.98 | yes | 4/4 | -3.429 | 1.00000 | 0.825 | 3.5 | 1 syllables fall before the audio file starts (clipped to 0 ms) |
+| 234 | 1.00 | yes | 3/3 | -2.348 | 1.00000 | 1.0 | 3.3 |  |
+| 235 | 1.00 | yes | 3/3 | -2.097 | 1.00001 | 1.0 | 3.6 |  |
+| 236 | 1.00 | yes | 4/4 | -1.733 | 1.00000 | 1.0 | 3.0 |  |
+| 237 | 1.00 | yes | 3/3 | -0.846 | 0.99999 | 1.0 | 3.2 |  |
+| 238 | 1.00 | yes | 3/3 | -2.347 | 1.00002 | 0.984 | 6.1 |  |
+| 239 | 1.00 | yes | 4/4 | -0.951 | 0.99999 | 1.0 | 4.1 |  |
+| 240 | 0.98 | yes | 3/3 | -2.951 | 1.00000 | 0.576 | 4.4 | v2: refrain from verse 1 appended; v3: refrain from verse 1 appended; 1 syllables fall before the audio file starts (clipped to 0 ms) |
+| 241 | 1.00 | yes | 5/5 | -2.213 | 1.00001 | 0.763 | 4.9 |  |
+| 242 | 1.00 | yes | 4/4 | -0.951 | 1.00000 | 0.676 | 3.3 |  |
+| 243 | 0.94 | yes | 4/4 | -0.847 | 1.00000 | 0.918 | 3.6 |  |
+| 244 | 1.00 | yes | 3/3 | -1.595 | 1.00000 | 1.0 | 3.7 |  |
+| 245 | 1.00 | yes | 5/5 | -1.508 | 0.99999 | 1.0 | 3.8 |  |
+| 246 | 0.94 | yes | 3/4 | -0.748 | 1.00000 | 1.0 | 3.9 | MIDI verse 4 has no Kinyarwanda text; verse count differs: 3 Kinyarwanda entries vs 4 MIDI verses |
+| 247 | 1.00 | yes | 4/4 | -2.214 | 1.00000 | 1.0 | 4.5 |  |
+| 248 | 1.00 | yes | 4/4 | -0.096 | 1.00002 | 1.0 | 4.6 |  |
+| 249 | 0.95 | yes | 5/5 | -2.096 | 1.00000 | 1.0 | 4.4 |  |
+| 250 | 1.00 | yes | 4/4 | -1.806 | 1.00000 | 0.8 | 5.2 | v1: repeats ['couplet']; v2: repeats ['couplet']; v3: repeats ['couplet']; v4: repeats ['couplet'] |
+| 251 | 1.00 | yes | 3/3 | -0.096 | 0.99999 | 1.0 | 4.4 |  |
+| 252 | 1.00 | yes | 3/1 | -1.672 | 0.99995 | 0.744 | 4.2 | Kinyarwanda verse(s) 1-3 <-> MIDI verse(s) 1-1; verse count differs: 3 Kinyarwanda entries vs 1 MIDI verses |
+| 253 | 0.88 | yes | 4/4 | -0.095 | 1.00000 | 1.0 | 3.8 |  |
+| 254 | 0.94 | yes | 3/3 | -0.094 | 0.99998 | 1.0 | 3.4 |  |
+| 255 | 1.00 | yes | 5/5 | -0.095 | 1.00000 | 1.0 | 4.1 |  |
+| 256 | 0.88 | yes | 4/4 | -1.810 | 1.00000 | 1.0 | 4.2 | v2: refrain from verse 1 appended; v3: refrain from verse 1 appended; v4: refrain from verse 1 appended |
+| 257 | 0.93 | yes | 6/5 | -0.098 | 1.00000 | 1.0 | 4.0 | Kinyarwanda verse(s) 1-2 <-> MIDI verse(s) 1-1; verse count differs: 6 Kinyarwanda entries vs 5 MIDI verses |
+| 258 | 0.75 | yes | 3/3 | -3.430 | 1.00000 | 0.992 | 4.0 | v1: repeats ['none']; v2: repeats ['none']; v3: repeats ['none'] |
+| 259 | 1.00 | yes | 2/2 | -2.094 | 1.00000 | 0.993 | 4.8 |  |
+| 260 | 0.97 | yes | 6/6 | -2.213 | 1.00000 | 1.0 | 4.3 |  |
+| 261 | 0.81 | yes | 4/4 | -0.095 | 1.00000 | 1.0 | 4.7 |  |
+| 262 | 1.00 | yes | 5/5 | -0.096 | 0.99999 | 1.0 | 3.9 |  |
+| 263 | 0.92 | yes | 3/3 | -3.095 | 1.00000 | 1.0 | 5.1 | v2: refrain from verse 1 appended; v3: refrain from verse 1 appended |
+| 264 | 1.00 | yes | 3/3 | -0.095 | 1.00000 | 0.993 | 4.1 |  |
+| 265 | 1.00 | yes | 4/4 | -1.731 | 1.00000 | 1.0 | 4.1 | v2: refrain from verse 1 appended; v3: refrain from verse 1 appended; v4: refrain from verse 1 appended |
+| 266 | 1.00 | yes | 3/3 | -0.096 | 1.00001 | 1.0 | 3.9 |  |
+| 267 | 1.00 | yes | 5/4 | -1.763 | 1.00000 | 1.0 | 3.9 | Kinyarwanda verse(s) 1-2 <-> MIDI verse(s) 1-1; verse count differs: 5 Kinyarwanda entries vs 4 MIDI verses |
+| 268 | 0.78 | yes | 3/3 | -2.823 | 1.00000 | 1.0 | 4.4 |  |
+| 269 | 0.96 | yes | 3/3 | -0.096 | 0.99999 | 1.0 | 4.7 |  |
+| 270 | 0.97 | yes | 4/4 | -0.469 | 0.99999 | 0.643 | 3.9 |  |
+| 271 | 1.00 | yes | 4/4 | -1.597 | 1.00002 | 1.0 | 4.1 |  |
 
-## Excluded hymns and why
+## Known issues and what to spot-check
 
-- **Verse count does not match the audio** (P matches every onset, but the number of repeats differs from the number of verses in songs.json): 118 (2 repeats, 3 verses), 173, 189 (5 repeats, 4 verses), 246 (4 repeats, 3 verses), 257 (5 repeats, 6 verses), 264, 267 (4 repeats, 5 verses). The lyrics and the MIDI disagree; someone needs to check which one is right.
-- **Audio not periodic per verse** (tempo changes, or different music per verse): 13 and 29 (identical audio files), 74, 217, 250, 252. Also 169, where segmentation left a verse with no usable onsets.
-- **Alignment ambiguous** (just under the threshold): 21, 22, 110, 123, 180, 187, 219, 227. Repeated passages of the tune don't line up with the printed lines, or independent verses disagree.
-- **200bis**: audio only, no lyrics entry.
+- **Verse structure differs from the MIDI:**
+  - 118: the audio has 2 verses, so Kinyarwanda verse 3 has no events.
+  - 189: Kinyarwanda entry 2 = MIDI verses 2+3.
+  - 246: MIDI verse 4 has no text.
+  - 252: 3 entries on 1 MIDI verse.
+  - 257 and 267: verse 1 is split into two entries.
+  - 111: the MIDI has a refrain on verses 1 and 4 with no Kinyarwanda text, so those notes get no events.
 
-## Known failure patterns, also present in included hymns
-
-1. **Line boundary off by 1-2 notes** in tunes with continuous rhythm and no rests, or with two held notes in a row (hymn 7 line 5, hymn 1). Inside a line this shifts the following words by one note.
-2. **Melisma or extra piano note:** where the piano has more notes than syllables, the slur is placed where it is cheapest, which is not always the real slur.
-3. **Missed onsets** (repeated notes, soft re-attacks): the syllable is interpolated inside the long interval and can be off by up to half a note.
-4. **Optional vowel merges** are decided by the aligner. A merged pair gives two words the same start, so the first of them is highlighted only briefly.
-5. **Refrain only under verse 1:** for 7 hymns the refrain is appended to later verses with events pointing at verse 0's lines. If the app shows only the current verse card, it has to look across verses for those events.
-6. **Verse 1 first word:** the re-inserted chord sits at 0.00 s, but in later verses it falls 0.1 s before the periodic start, so verse 1 can be about 0.1 s late compared with the others.
-7. **Word ends** usually run on to the next word or line start, because piano sustain hides rests. Don't treat end times as reliable rest markers.
-
-## Spot-check by ear (in this order)
-
-- **7**: reference check. Is line 5 on 35.4 s or 36.2 s?
-- **1**: borderline, continuous rhythm, refrain.
-- **4**: line-level `(bis)` and uneven line counts.
-- **8**: couplet repeat.
-- **5**: interpolated missed onsets.
-- **125 and 101**: refrain appended from verse 1.
-- **41 and 138**: mid-line repeat markers.
-- **111, 216, 94, 179**: lowest included scores (0.60-0.62).
-- **35, 128, 216**: repetition consistency 0.0, meaning the line starts don't follow the repeated melody.
-
-If several of the lowest included hymns sound wrong, raise `QUALITY_THRESHOLD` to 0.7. That drops 26 hymns: 223 of 272 audio files would remain.
+  In each case the events are placed correctly but some text or music is left uncovered. Check these by ear.
+- **Lowest included scores:** 118 (0.67), 258 (0.75), 111 (0.77), 225 and 268 (0.78), 261 (0.81), 94 (0.84). Some lines there need a 2:1 or 1:2 syllable mapping beyond a single merge, so check those lines for which syllable gets the long note.
+- **Clipped first syllables:** in 89, 176, 188, 200, 217, 233 and 240, 1-2 syllables fall before the audio file starts and are clipped to 0 ms.
+- **Excluded:** 173 (MIDI and audio disagree: 58% matched, rms 13 ms; probably a different arrangement) and 200bis (no lyrics).
+- **Split notes:** when two Kinyarwanda syllables share one French note without an elision, the note is split evenly. That is an approximation of how singers fit the extra syllable.
