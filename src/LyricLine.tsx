@@ -26,7 +26,7 @@ interface LyricLineProps {
 }
 
 // Colouring follows the text colour only (no background): sung = accent, current syllable =
-// accent + bold, upcoming = normal. Word k is the k-th whitespace-separated
+// accent + underline, upcoming = normal. Word k is the k-th whitespace-separated
 // word after the verse number, which is how lyricTiming.json indexes words.
 const LyricLine = ({ line, lineKey, progress, charStart, charEnd, fontStyles, onLineLayout }: LyricLineProps) => {
 	const verseNumberMatch = line.match(VERSE_NUMBER_REGEX);
@@ -123,9 +123,10 @@ const styles = StyleSheet.create({
 	sungWord: {
 		color: '#6d3549',
 	},
+	// Underline, not bold: bold changes glyph widths and would reflow the line on every syllable.
 	currentWord: {
 		color: '#6d3549',
-		fontWeight: '700',
+		textDecorationLine: 'underline',
 	},
 	verseNumber: {
 		fontSize: 17,
