@@ -7,7 +7,26 @@ export const PLAYBACK_POLL_INTERVAL_MS = 250;
 // Faster status updates while the follow-along lyrics are on.
 export const FOLLOW_ALONG_POLL_INTERVAL_MS = 100;
 
-class AudioService {
+// A load that never settles (stalled decoder, web media element that never fires) must not
+// block every later load and unload behind it.
+export const LOAD_TIMEOUT_MS = 15000;
+
+const withTimeout = <T>(promise: Promise<T>, ms: number, message: string): Promise<T> =>
+	new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error(message)), ms);
+		promise.then(
+			(value) => { clearTimeout(timer); resolve(value); },
+			(error) => { clearTimeout(timer); reject(error); }
+		);
+	});
+
+export class AudioService {
+	private readonly timeoutMs: number;
+
+	constructor(timeoutMs = LOAD_TIMEOUT_MS) {
+		this.timeoutMs = timeoutMs;
+	}
+
 	private sound: Audio.Sound | null = null;
 	private statusListener: PlaybackStatusListener | null = null;
 	// Screen that currently owns the Sound; lets a screen unload only its own audio.
@@ -48,7 +67,9 @@ class AudioService {
 		shouldPlay = false,
 		owner: string | null = null,
 		listener: PlaybackStatusListener | null = null,
-		pollIntervalMs = PLAYBACK_POLL_INTERVAL_MS
+		pollIntervalMs = PLAYBACK_POLL_INTERVAL_MS,
+		// Checked after the load, inside the queue; false means the caller left, so skip playing.
+		canPlay: () => boolean = () => true
 	): Promise<AVPlaybackStatus> {
 		return this.enqueue(async () => {
 			await this.unloadNowAsync();
@@ -63,14 +84,22 @@ class AudioService {
 			const loadSource = typeof source === 'string' ? { uri: source } : source;
 
 			try {
-				return await sound.loadAsync(
-					loadSource,
-					{
-						shouldPlay,
-						positionMillis: 0,
-						progressUpdateIntervalMillis: pollIntervalMs,
-					}
+				const status = await withTimeout(
+					sound.loadAsync(
+						loadSource,
+						{
+							shouldPlay: false,
+							positionMillis: 0,
+							progressUpdateIntervalMillis: pollIntervalMs,
+						}
+					),
+					this.timeoutMs,
+					'Audio load timed out'
 				);
+				if (shouldPlay && status.isLoaded && this.sound === sound && canPlay()) {
+					return await withTimeout(sound.playAsync(), this.timeoutMs, 'Audio play timed out');
+				}
+				return status;
 			} catch (error) {
 				await this.unloadNowAsync();
 				throw error;
@@ -151,9 +180,9 @@ class AudioService {
 
 		sound.setOnPlaybackStatusUpdate(null);
 		try {
-			await sound.unloadAsync();
+			await withTimeout(sound.unloadAsync(), this.timeoutMs, 'Audio unload timed out');
 		} catch {
-			// Already unloaded.
+			// Already unloaded, or the unload hung: the reference is dropped either way.
 		}
 	}
 }

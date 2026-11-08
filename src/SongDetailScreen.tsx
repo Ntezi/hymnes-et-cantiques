@@ -516,7 +516,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 						applyPlaybackStatus(status);
 					}
 				},
-				karaokeOn ? FOLLOW_ALONG_POLL_INTERVAL_MS : PLAYBACK_POLL_INTERVAL_MS
+				karaokeOn ? FOLLOW_ALONG_POLL_INTERVAL_MS : PLAYBACK_POLL_INTERVAL_MS,
+				// The hymn may have been left while this load was queued: then do not start playback.
+				() => epoch === playbackEpochRef.current
 			);
 			if (epoch !== playbackEpochRef.current) {
 				return;

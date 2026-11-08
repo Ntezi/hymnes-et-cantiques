@@ -5,16 +5,16 @@ import assert from 'node:assert/strict';
 import { register } from 'node:module';
 
 const stub = `
-export const stats = { live: 0, maxLive: 0, created: 0 };
+export const stats = { live: 0, maxLive: 0, created: 0, played: 0, hangLoads: 0 };
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 export const Audio = {
 	setAudioModeAsync: async () => {},
 	Sound: class {
 		constructor() { stats.created += 1; this.loaded = false; }
 		setOnPlaybackStatusUpdate() {}
-		async loadAsync() { await delay(Math.random() * 15); this.loaded = true; stats.live += 1; stats.maxLive = Math.max(stats.maxLive, stats.live); return { isLoaded: true }; }
+		async loadAsync() { if (stats.hangLoads > 0) { stats.hangLoads -= 1; return new Promise(() => {}); } await delay(Math.random() * 15); this.loaded = true; stats.live += 1; stats.maxLive = Math.max(stats.maxLive, stats.live); return { isLoaded: true }; }
 		async unloadAsync() { await delay(Math.random() * 15); if (this.loaded) { this.loaded = false; stats.live -= 1; } }
-		async playAsync() {} async pauseAsync() {} async stopAsync() {} async setPositionAsync() {}
+		async playAsync() { stats.played += 1; return { isLoaded: true, isPlaying: true }; } async pauseAsync() {} async stopAsync() {} async setPositionAsync() {}
 	},
 };`;
 const stubUrl = 'data:text/javascript,' + encodeURIComponent(stub);
@@ -25,7 +25,7 @@ export async function resolve(specifier, context, next) {
 }`;
 register('data:text/javascript,' + encodeURIComponent(hooks));
 
-const { audioService } = await import('../../src/services/audioService.ts');
+const { audioService, AudioService } = await import('../../src/services/audioService.ts');
 const { stats } = await import(stubUrl);
 
 // 20 rapid "hymn changes": each loads (fire and forget) then its owner unloads.
@@ -43,5 +43,25 @@ await audioService.unloadAsync('screen-A');
 assert.equal(stats.live, 1, 'screen-A cannot unload screen-B audio');
 await audioService.unloadAsync('screen-B');
 assert.equal(stats.live, 0, 'owner can unload its own audio');
+
+// A Play whose owner left before the queued load finished must not start the Sound (F5).
+stats.played = 0;
+let stillWanted = true;
+const quick = audioService.loadAsync(1, true, 'screen-C', null, 250, () => stillWanted);
+stillWanted = false;
+await quick;
+await audioService.unloadAsync('screen-C');
+assert.equal(stats.played, 0, 'no playback when canPlay is false');
+await audioService.loadAsync(1, true, 'screen-D');
+assert.equal(stats.played, 1, 'plays when still wanted');
+await audioService.unloadAsync('screen-D');
+
+// A load that never settles times out, rejects, and does not block later loads (F6).
+const fast = new AudioService(50);
+stats.hangLoads = 1;
+await assert.rejects(fast.loadAsync(1, true, 'screen-E'), /timed out/);
+await fast.loadAsync(1, false, 'screen-F');
+assert.equal(stats.live, 1, 'a later load works after a hung one');
+await fast.unloadAsync('screen-F');
 
 console.log('audioService tests passed (created', stats.created, 'Sounds, max live', stats.maxLive + ')');
