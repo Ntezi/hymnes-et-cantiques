@@ -7,7 +7,7 @@ import { DEFAULT_COLLECTION_ID, getCollections } from './library';
 const SELECTED_COLLECTION_KEY = 'app_selected_collection_id';
 const UI_LANGUAGE_KEY = 'app_ui_language';
 
-const SUPPORTED_UI_LANGUAGES = ['rw', 'fr', 'en'] as const;
+const SUPPORTED_UI_LANGUAGES = ['rw', 'fr', 'en', 'ee'] as const;
 export type UiLanguageCode = (typeof SUPPORTED_UI_LANGUAGES)[number];
 
 const resolveDefaultUiLanguage = (): UiLanguageCode => {
@@ -17,6 +17,9 @@ const resolveDefaultUiLanguage = (): UiLanguageCode => {
 	}
 	if (localeLanguage === 'fr') {
 		return 'fr';
+	}
+	if (localeLanguage === 'ee') {
+		return 'ee';
 	}
 	return 'en';
 };
