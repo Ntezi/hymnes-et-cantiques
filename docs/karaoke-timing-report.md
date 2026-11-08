@@ -2,9 +2,26 @@
 
 Generated 2026-11-08 by `python3 align.py` (about 20 s). Outputs, all in `/home/claude/hec/timing/`:
 
-- `lyricTiming.json`: what the app loads. Contains only hymns with quality >= 0.6 (`QUALITY_THRESHOLD` in align.py).
+- `lyricTiming.json` (**version 2, one event per sung syllable**): what the app loads. Contains only hymns with quality >= 0.6 (`QUALITY_THRESHOLD` in align.py).
 - `quality.json`: diagnostics for every hymn (segmentation, scores, chosen repeat mode, elision and missed-onset counts).
-- `python3 align.py --show 7 [--table]`: prints line start offsets per verse, and with `--table` the word-to-time table. Nothing is written.
+- `python3 align.py --show 7 [--table] [--verse 0]`: prints line start offsets per verse, and with `--table` the syllable-to-time table (token, syllable text, ms). Nothing is written.
+
+## Format (version 2)
+
+`{"version":2,"generatedAt":"2026-11-08","hymns":{"7":{"quality":q,"events":[[verseIdx,lineIdx,wordIdx,charStart,charEnd,startMs,endMs],...]}}}`
+
+- There is one event per sung syllable, sorted by startMs.
+- `charStart` and `charEnd` are a half-open range inside the token string, using the app's tokenisation.
+- Syllable ranges are contiguous and cover each token exactly once:
+  - Consonants and the apostrophe of an elided vowel open the next syllable: `Wow'utuye` = `Wo|w'u|tu|ye`, `n'abamarayika:` = `n'a|ba|ma|ra|yi|ka:`.
+  - Leading punctuation and marker text attach to the first syllable; trailing consonants and punctuation attach to the last.
+- A melisma is one event covering all its notes.
+- A repeated line gives repeated events.
+- A token with letters but no vowel (a lone `n'`) gets one whole-token event, timed with the next syllable.
+- Repeat markers (`(bis)` etc.) and punctuation-only tokens get no events.
+- endMs is the next later syllable start. A line-final syllable is capped at an envelope rest, as before.
+- When two words merge on one note, both syllables get the same start and the same end.
+- `align.py` checks every run that each range is inside its token, that every sung token occurrence is covered exactly once, that every sung token has events, and that events are sorted. It prints "validation ok".
 
 **Result: 249 of 272 audio files included.** 22 hymns are excluded as low quality, plus 200bis, which has audio but no lyrics in songs.json.
 
@@ -30,7 +47,7 @@ Generated 2026-11-08 by `python3 align.py` (about 20 s). Outputs, all in `/home/
 7. **Consistency passes.**
    - (a) Across verses: the music is identical, so line starts must sit at the same offset from the verse start. Each verse's line starts are tried as a shared template for all verses, and the cheapest total wins.
    - (b) Within a verse: onsets with matching chroma and rhythm over 6 or more notes mark a repeated passage, for example lines 1-2 = lines 3-4. A line start is encouraged where a repeat begins, and the two copies are aligned so their line starts correspond.
-8. **Word times.** A word starts at its first syllable. It ends at the next later word start. For a line-final word, the end is cut short if the envelope drops below 20% of the note's peak (a real rest). In practice the piano sustain seldom drops that far, so line-final words usually last until the next line starts.
+8. **Syllable times.** A syllable starts at its note, or at its interpolated time if the onset was missed. It ends at the next later syllable start. For a line-final syllable, the end is cut short if the envelope drops below 20% of the note's peak (a real rest). In practice the piano sustain seldom drops that far, so line-final syllables usually last until the next line starts.
 9. **Quality** (0 to 1) is a product of these terms:
    - Segmentation confidence (period match, or 0.9 for single-verse hymns).
    - Per-verse alignment score: syllables on strong onsets, held line ends, syllable to strong-onset ratio, few skipped strong onsets, no line crossing a long gap, few missed onsets. This is 0.7 of the mean plus 0.3 of the worst verse.

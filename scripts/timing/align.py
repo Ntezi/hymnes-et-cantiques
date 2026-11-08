@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Karaoke word timing for the HEC hymns (Kinyarwanda) from piano-render onsets.
+"""Karaoke syllable timing (lyricTiming.json version 2) for the HEC hymns (Kinyarwanda) from piano-render onsets.
 
 python3 align.py            -> writes lyricTiming.json (+ quality.json used by report.md)
 python3 align.py --show 7   -> print word/time table for hymn 7 (no files written)
@@ -53,14 +53,32 @@ def _letters(w):
     return ''.join(c for c in w if 'a' <= c <= 'z')
 
 
+def _is_vowel(ch):
+    return unicodedata.normalize('NFD', ch)[0].lower() in 'aeiou'
+
+
+def syl_ranges(token):
+    """Half-open character ranges of the sung syllables inside a token string.
+    Every vowel letter is a nucleus (CV, CCV, NCV...; y/w are glides = consonants); the
+    consonants (and an apostrophe of an elided vowel) before a vowel open its syllable, so
+    "Wow'utuye" -> Wo|w'u|tu|ye. Leading punctuation/marker text goes to the first syllable,
+    trailing consonants/punctuation to the last. Repeat-marker text never counts as a vowel.
+    Ranges are contiguous and cover the whole token; [] if the token has no vowel."""
+    masked = list(token)
+    for m in MARK_RE.finditer(token):
+        for k in range(m.start(), m.end()):
+            masked[k] = '#'
+    vow = [k for k, ch in enumerate(masked) if ch != '#' and ch.isalpha() and _is_vowel(ch)]
+    if not vow:
+        return []
+    starts = [0] + [v + 1 for v in vow[:-1]]
+    ends = [v + 1 for v in vow[:-1]] + [len(token)]
+    return list(zip(starts, ends))
+
+
 def syllables(word):
-    """Number of sung syllables of a token (marker text removed).
-    Apostrophe = elided vowel, so the consonant joins the next vowel: just delete it.
-    Every vowel letter is a nucleus (CV, CCV, NCV...; y/w are glides = consonants)."""
-    w = MARK_RE.sub('', word)
-    w = unicodedata.normalize('NFD', w.lower())
-    w = ''.join(c for c in w if 'a' <= c <= 'z')
-    return sum(1 for c in w if c in 'aeiou')
+    """Number of sung syllables of a token (marker text removed)."""
+    return len(syl_ranges(word))
 
 
 class Line:
@@ -136,9 +154,11 @@ def to_syllables(seq):
             elide = 0
             if n and prev_end and prev_end[0] and letters[:1] in tuple('aeiou'):
                 elide = 2 if prev_end[1] else 1
+            rng = syl_ranges(L.words[wi])
             for s in range(n):
                 syl.append({'lfirst': False, 'llast': False, 'wfirst': s == 0,
-                            'elide': elide if s == 0 else 0, 'line': li_s})
+                            'elide': elide if s == 0 else 0, 'line': li_s,
+                            'w': (L.vi, L.li, wi), 'cs': rng[s][0], 'ce': rng[s][1]})
             if n:
                 prev_end = (letters[-1:] in tuple('aeiou'), bool(re.search(r'[,;:.!?]$', stripped)))
         if len(syl) > line_start:
@@ -642,24 +662,34 @@ def process(song, ons, feat=None):
     for vi, (syl, words, idx, (c, times, path, modes, st)) in enumerate(res):
         vq.append(verse_quality(st))
         raw = []
+        seq = 0
         for k, (wv, wl, wwi, fs) in enumerate(words):
-            if fs is None:
-                # zero-syllable token: take the next sung word's start
+            if fs is not None:
+                ls = fs
+                while ls + 1 < len(syl) and not syl[ls + 1]['wfirst']:
+                    ls += 1
+                for i in range(fs, ls + 1):
+                    raw.append(dict(v=wv, l=wl, w=wwi, cs=syl[i]['cs'], ce=syl[i]['ce'],
+                                    start=float(times[i]), last_syl_t=float(times[i]),
+                                    line_last=bool(syl[i]['llast']), seg_end=segs[vi][1], seq=i))
+            else:
+                # token with letters but no vowel (e.g. a lone "n'"): one event, merged
+                # into the next sung syllable (or the previous one at a line end)
                 nxt = next((w[3] for w in words[k + 1:] if w[3] is not None), None)
                 if nxt is None:
                     nxt = next((w[3] for w in reversed(words[:k]) if w[3] is not None), None)
-                fs = nxt
-            # last syllable of this word
-            ls = fs
-            while ls + 1 < len(syl) and not syl[ls + 1]['wfirst']:
-                ls += 1
-            raw.append(dict(v=wv, l=wl, w=wwi, start=float(times[fs]), last_syl_t=float(times[ls]),
-                            line_last=bool(syl[ls]['llast']), seg_end=segs[vi][1]))
-        raw.sort(key=lambda e: e['start'])
+                tok = toks[wv][wl][wwi]
+                raw.append(dict(v=wv, l=wl, w=wwi, cs=0, ce=len(tok), start=float(times[nxt]),
+                                last_syl_t=float(times[nxt]), line_last=False, seg_end=segs[vi][1],
+                                seq=nxt - 0.5))
+        raw.sort(key=lambda e: (e['start'], e['seq']))
         word_end_times(raw, ons['env'], None)
         for e in raw:
-            events.append([e['v'], e['l'], e['w'], int(round(e['start'] * 1000)), int(round(e['end'] * 1000))])
-    events.sort(key=lambda e: (e[3], e[0], e[1], e[2]))
+            events.append([e['v'], e['l'], e['w'], e['cs'], e['ce'],
+                           int(round(e['start'] * 1000)), int(round(e['end'] * 1000)),
+                           vi * 100000 + e['seq']])
+    events.sort(key=lambda e: (e[5], e[7]))
+    events = [e[:7] for e in events]
     mq = float(np.mean(vq))
     q = segconf * (0.7 * mq + 0.3 * min(vq)) * (0.85 if agree is None else 0.55 + 0.45 * agree)
     if repc1 is not None:
@@ -701,7 +731,7 @@ def show(num, songs, ons):
     toks = [tokenize_verse(v) for v in song['verses']]
     # line-start table (first event of each (verse,line) occurrence), relative to verse start
     starts = {}
-    for v, l, w, a, b in ev:
+    for v, l, w, cs, ce, a, b in ev:
         starts.setdefault(v, [])
         if not starts[v] or starts[v][-1][0] != l:
             starts[v].append((l, a))
@@ -711,19 +741,66 @@ def show(num, songs, ons):
         print(f'  v{v}: ' + ' '.join(f'{(a - v0)/1000:6.2f}' for l, a in starts[v]))
     if '--table' not in sys.argv:
         return
+    only_v = None
+    if '--verse' in sys.argv:
+        only_v = int(sys.argv[sys.argv.index('--verse') + 1])
     prev_line = None
-    for v, l, w, a, b in ev:
+    for v, l, w, cs, ce, a, b in ev:
+        if only_v is not None and v != only_v:
+            continue
         if (v, l) != prev_line:
-            print(f'\n  v{v} l{l} @{a/1000:7.2f}: ', end='')
+            print(f'\n  v{v} l{l}:')
             prev_line = (v, l)
-        print(f'{toks[v][l][w]}[{a/1000:.2f}-{b/1000:.2f}] ', end='')
+        tok = toks[v][l][w]
+        print(f'    {tok:<18} {tok[cs:ce]:<8} {a:>7}-{b:<7} ms')
     print()
+
+
+def validate(hymns, songs):
+    """Every event's range lies inside its token; for every sung occurrence of a token the
+    syllable ranges are contiguous and cover it exactly once; events sorted by start."""
+    problems = []
+    for key, h in hymns.items():
+        toks = [tokenize_verse(v) for v in songs[key]['verses']]
+        ev = h['events']
+        if any(ev[i][5] > ev[i + 1][5] for i in range(len(ev) - 1)):
+            problems.append((key, 'not sorted'))
+        occ = {}
+        for v, l, w, cs, ce, a, b in ev:
+            tok = toks[v][l][w]
+            if not (0 <= cs < ce <= len(tok)):
+                problems.append((key, 'range', v, l, w, cs, ce))
+            if b <= a:
+                problems.append((key, 'empty time', v, l, w, a, b))
+            occ.setdefault((v, l, w), []).append((cs, ce))
+        for (v, l, w), rs in occ.items():
+            tok = toks[v][l][w]
+            n = len(syl_ranges(tok)) or 1
+            if len(rs) % n:
+                problems.append((key, 'syllable count', v, l, w, rs))
+                continue
+            full = [(0, len(tok))] if not syl_ranges(tok) else syl_ranges(tok)
+            if sorted(rs) != sorted(full * (len(rs) // n)):
+                problems.append((key, 'coverage', v, l, w, rs))
+            if full[0][0] != 0 or full[-1][1] != len(tok) or any(full[k][1] != full[k + 1][0] for k in range(len(full) - 1)):
+                problems.append((key, 'not contiguous', v, l, w))
+        for v in range(len(toks)):
+            for l in range(len(toks[v])):
+                for w, tok in enumerate(toks[v][l]):
+                    sung = re.search(r'\w', MARK_RE.sub('', tok))
+                    if sung and (v, l, w) not in occ:
+                        problems.append((key, 'token without events', v, l, w, tok))
+                    if not sung and (v, l, w) in occ:
+                        problems.append((key, 'marker/punctuation has events', v, l, w, tok))
+    return problems
 
 
 def main():
     songs, ons = load()
     if '--show' in sys.argv:
-        for a in [x for x in sys.argv[sys.argv.index('--show') + 1:] if not x.startswith('--')]:
+        args = sys.argv[sys.argv.index('--show') + 1:]
+        skip = {i + 1 for i, x in enumerate(args) if x == '--verse'}
+        for a in [x for i, x in enumerate(args) if not x.startswith('--') and i not in skip]:
             show(a, songs, ons)
         return
     hymns, qual = {}, {}
@@ -739,7 +816,12 @@ def main():
         qual[key] = info
         if ev and info['quality'] >= QUALITY_THRESHOLD:
             hymns[key] = {'quality': round(info['quality'], 2), 'events': ev}
-    out = {'version': 1, 'generatedAt': GENERATED_AT, 'hymns': hymns}
+    problems = validate(hymns, songs)
+    if problems:
+        print(f'VALIDATION: {len(problems)} problems, e.g. {problems[:5]}')
+    else:
+        print('validation ok: ranges inside tokens, per-occurrence coverage complete, sorted')
+    out = {'version': 2, 'generatedAt': GENERATED_AT, 'hymns': hymns}
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(out, f, separators=(',', ':'), ensure_ascii=False)
     with open(QOUT, 'w', encoding='utf-8') as f:
