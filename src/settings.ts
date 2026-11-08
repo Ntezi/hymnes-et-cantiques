@@ -9,17 +9,26 @@ export const DEFAULT_LYRICS_FONT_STEP = 1;
 export const clampLyricsFontStep = (step: number): number =>
 	Math.min(LYRICS_FONT_SIZES.length - 1, Math.max(0, Math.round(step)));
 
+// Last known step, so a hymn opens at the saved size on the first render (no size jump).
+let cachedStep = DEFAULT_LYRICS_FONT_STEP;
+export const getCachedLyricsFontStep = (): number => cachedStep;
+
 export const loadLyricsFontStep = async (): Promise<number> => {
 	try {
 		const raw = await AsyncStorage.getItem(LYRICS_FONT_STEP_KEY);
 		const parsed = raw === null ? NaN : Number(raw);
-		return Number.isFinite(parsed) ? clampLyricsFontStep(parsed) : DEFAULT_LYRICS_FONT_STEP;
+		cachedStep = Number.isFinite(parsed) ? clampLyricsFontStep(parsed) : DEFAULT_LYRICS_FONT_STEP;
 	} catch {
-		return DEFAULT_LYRICS_FONT_STEP;
+		// Keep the cached value.
 	}
+	return cachedStep;
 };
 
+// Warm the cache at startup (the splash screen runs first).
+loadLyricsFontStep();
+
 export const saveLyricsFontStep = async (step: number): Promise<void> => {
+	cachedStep = clampLyricsFontStep(step);
 	try {
 		await AsyncStorage.setItem(LYRICS_FONT_STEP_KEY, String(clampLyricsFontStep(step)));
 	} catch {

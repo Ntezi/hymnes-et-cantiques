@@ -37,7 +37,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
 	clampLyricsFontStep,
-	DEFAULT_LYRICS_FONT_STEP,
+	getCachedLyricsFontStep,
 	LYRICS_FONT_SIZES,
 	loadLyricsFontStep,
 	saveLyricsFontStep,
@@ -104,7 +104,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isBuffering, setIsBuffering] = useState(false);
 	const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
-	const [fontStep, setFontStep] = useState(DEFAULT_LYRICS_FONT_STEP);
+	const [fontStep, setFontStep] = useState(getCachedLyricsFontStep());
 	const audioOwnerId = useRef(`song-detail-${Math.random().toString(36).slice(2)}`).current;
 	const isMelodyLoadedRef = useRef(false);
 	const playbackEpochRef = useRef(0);
