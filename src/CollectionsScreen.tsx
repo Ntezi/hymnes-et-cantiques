@@ -13,7 +13,7 @@ const CollectionsScreen = ({ navigation }) => {
 	const { selectedCollectionId, setSelectedCollectionId, uiLanguage, setUiLanguage } = useAppState();
 	const uiLanguageOptions: UiLanguageCode[] = ['rw', 'fr', 'en'];
 	const resolveLanguageLabel = (languageCode: string, fallbackLabel: string) => {
-		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en') {
+		if (languageCode === 'rw' || languageCode === 'fr' || languageCode === 'en' || languageCode === 'ee') {
 			return t(`languages.${languageCode}`);
 		}
 		return fallbackLabel;

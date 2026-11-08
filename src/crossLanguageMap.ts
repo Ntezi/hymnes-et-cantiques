@@ -4,6 +4,7 @@ type RawCrossLanguageEntry = {
 	rw?: string;
 	fr?: string;
 	en?: string;
+	ee?: string;
 };
 
 const RAW_CROSS_LANGUAGE_MAP = require('./crossLanguageMap.json') as Record<string, RawCrossLanguageEntry>;
@@ -12,6 +13,7 @@ const COLLECTION_LANGUAGE_BY_ID: Record<string, LanguageCode> = {
 	'hymnes-rw': 'rw',
 	'hymnes-fr': 'fr',
 	'hymnes-en': 'en',
+	'hymnes-ee': 'ee',
 };
 
 const toUniqueSongIds = (songIds: string[]) =>
@@ -26,6 +28,7 @@ const buildCrossLanguageIndex = () => {
 			links.rw || '',
 			links.fr || '',
 			links.en || '',
+			links.ee || '',
 		]);
 
 		groupSongIds.forEach((songId) => {

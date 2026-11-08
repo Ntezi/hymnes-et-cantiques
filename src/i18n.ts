@@ -24,6 +24,7 @@ const resources = {
 				rw: 'Kinyarwanda',
 				fr: 'French',
 				en: 'English',
+				ee: 'Ewe',
 			},
 			songTypes: {
 				hymn: 'Hymn',
@@ -186,6 +187,7 @@ const resources = {
 				rw: 'Kinyarwanda',
 				fr: 'Français',
 				en: 'Anglais',
+				ee: 'Éwé',
 			},
 			songTypes: {
 				hymn: 'Cantique',
@@ -348,6 +350,7 @@ const resources = {
 				rw: 'Kinyarwanda',
 				fr: 'Igifaransa',
 				en: 'Icyongereza',
+				ee: 'Eʋegbe',
 			},
 			songTypes: {
 				hymn: 'Indirimbo',

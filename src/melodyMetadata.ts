@@ -23,5 +23,17 @@ const SONG_MELODY_METADATA: Record<string, SongMelodyMetadata> = {
 	...MANUAL_SONG_MELODY_METADATA,
 };
 
-export const getSongMelodyMetadata = (songId: string): SongMelodyMetadata | null =>
-	SONG_MELODY_METADATA[songId] || null;
+// The Ewe edition shares numbering and the same piano audio, but has no timing generated from its own text.
+// Reuse the Kinyarwanda entry of the same number (only its total duration is used).
+const EWE_COLLECTION_PREFIX = 'hymnes-ee:';
+
+export const getSongMelodyMetadata = (songId: string): SongMelodyMetadata | null => {
+	const direct = SONG_MELODY_METADATA[songId];
+	if (direct) {
+		return direct;
+	}
+	if (songId.startsWith(EWE_COLLECTION_PREFIX)) {
+		return SONG_MELODY_METADATA[`hymnes-rw:${songId.slice(EWE_COLLECTION_PREFIX.length)}`] || null;
+	}
+	return null;
+};

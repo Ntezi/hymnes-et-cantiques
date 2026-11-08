@@ -1,6 +1,7 @@
 import songsRwData from './songs.json';
 import songsFrData from './songs_fr.json';
 import songsEnData from './songs_en.json';
+import songsEeData from './songs_ee.json';
 
 export type SongTypeId = 'hymn' | 'praise' | 'worship' | 'chorus' | 'other';
 export type LanguageCode = 'rw' | 'ee' | 'en' | 'fr' | 'multi';
@@ -94,6 +95,15 @@ const hymnesEnSongs: AppSong[] = buildCollectionSongs(
 	'English'
 );
 
+const hymnesEeSongs: AppSong[] = buildCollectionSongs(
+	songsEeData as BaseSong[],
+	'hymnes-ee',
+	'Hymnes et Cantiques',
+	'Hymnes et Cantiques',
+	'ee',
+	'Eʋegbe'
+);
+
 export const COLLECTION_CATALOG: CollectionItem[] = [
 	{
 		id: 'hymnes-rw',
@@ -124,6 +134,16 @@ export const COLLECTION_CATALOG: CollectionItem[] = [
 		language_label: 'English',
 		song_types: ['hymn'],
 		songs: hymnesEnSongs,
+	},
+	{
+		id: 'hymnes-ee',
+		name: 'Hymnes et Cantiques (EE)',
+		library_name: 'Hymnes et Cantiques',
+		description: 'Ewe edition (Togo)',
+		language_code: 'ee',
+		language_label: 'Eʋegbe',
+		song_types: ['hymn'],
+		songs: hymnesEeSongs,
 	},
 ];
 
