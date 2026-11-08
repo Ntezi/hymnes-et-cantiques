@@ -22,7 +22,7 @@ import { addRecentSongId } from './recentSongs';
 import AddToFavoriteSheet from './AddToFavoriteSheet';
 import SameMelodySheet from './SameMelodySheet';
 import { AVPlaybackStatusSuccess } from 'expo-av';
-import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import MelodyPlayerControl from './MelodyPlayerControl';
 import LyricLine from './LyricLine';
 import { getSongMelodyMetadata } from './melodyMetadata';
@@ -276,12 +276,33 @@ const SongDetailScreen = ({ route, navigation }) => {
 	}, [navigation, audioOwnerId]);
 
 	// Keep the screen on while a hymn is open (people read along during worship), not app-wide.
+	// Released on blur and unmount. On web activation is async, so a release that runs first must
+	// be repeated once the request resolves, otherwise the lock is never freed.
 	useEffect(() => {
-		activateKeepAwake(audioOwnerId).catch(() => undefined);
-		return () => {
+		let wanted = false;
+		const activate = () => {
+			wanted = true;
+			activateKeepAwakeAsync(audioOwnerId)
+				.then(() => {
+					if (!wanted) {
+						deactivateKeepAwake(audioOwnerId).catch(() => undefined);
+					}
+				})
+				.catch(() => undefined);
+		};
+		const deactivate = () => {
+			wanted = false;
 			deactivateKeepAwake(audioOwnerId).catch(() => undefined);
 		};
-	}, [audioOwnerId]);
+		activate();
+		const unsubscribeFocus = navigation.addListener('focus', activate);
+		const unsubscribeBlur = navigation.addListener('blur', deactivate);
+		return () => {
+			unsubscribeFocus();
+			unsubscribeBlur();
+			deactivate();
+		};
+	}, [navigation, audioOwnerId]);
 
 	// Position used for the colouring: last status position, advanced by the time since it arrived
 	// while playing, minus the user's sync nudge. Only re-renders when the active word changes.
