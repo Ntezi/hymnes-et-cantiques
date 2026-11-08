@@ -108,6 +108,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const audioOwnerId = useRef(`song-detail-${Math.random().toString(36).slice(2)}`).current;
 	const isMelodyLoadedRef = useRef(false);
 	const playbackEpochRef = useRef(0);
+	const playerPanRef = useRef<PanGestureHandler>(null);
 	const scrollViewRef = useRef<ScrollView | null>(null);
 	const lineOffsetMapRef = useRef<Record<string, number>>({});
 	const lastAutoScrollLineRef = useRef<string | null>(null);
@@ -645,6 +646,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 				enabled={!isAnySheetVisible && songs.length > 1}
 				activeOffsetX={[-30, 30]}
 				failOffsetY={[-20, 20]}
+				waitFor={playerPanRef}
 				onHandlerStateChange={onSwipeStateChange}
 			>
 			<View style={styles.swipeArea}>
@@ -708,6 +710,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 					</View>
 
 				{SHOW_MELODY_PLAYBACK && isMelodyControlVisible ? (
+					// Claims horizontal drags that start in the player (seek bar) so they never change the hymn.
+					<PanGestureHandler ref={playerPanRef} activeOffsetX={[-10, 10]} failOffsetY={[-10, 10]}>
+					<View>
 					<MelodyPlayerControl
 						isReady={isMelodyReady}
 						isLoading={isMelodyLoading}
@@ -722,6 +727,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 						onSeek={onSeekPlayback}
 						onRetryLoad={onRetryMelodyLoad}
 					/>
+					</View>
+					</PanGestureHandler>
 				) : null}
 
 					<View style={styles.fontSizeRow}>
