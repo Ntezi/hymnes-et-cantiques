@@ -15,6 +15,7 @@ const resources = {
 		translation: {
 			tabs: {
 				home: 'Home',
+				search: 'Search',
 				recent: 'Recent',
 				favorites: 'Favorites',
 				library: 'Library',
@@ -55,9 +56,9 @@ const resources = {
 			},
 			search: {
 				title: 'Search',
-				searchPlaceholder: 'Search by number or title...',
+				searchPlaceholder: 'Search by number, title or lyrics...',
 				startTypingTitle: 'Start typing to search',
-				startTypingText: 'Search songs by number, title, or subtitle.',
+				startTypingText: 'Search songs by number, title, or lyrics.',
 				noResultsTitle: 'No Results Found',
 				noResultsText: 'Try a different song title or number.',
 				results_one: '{{count}} result',
@@ -157,6 +158,7 @@ const resources = {
 		translation: {
 			tabs: {
 				home: 'Accueil',
+				search: 'Recherche',
 				recent: 'Récents',
 				favorites: 'Favoris',
 				library: 'Bibliothèque',
@@ -197,9 +199,9 @@ const resources = {
 			},
 			search: {
 				title: 'Recherche',
-				searchPlaceholder: 'Rechercher par numéro ou titre...',
+				searchPlaceholder: 'Rechercher par numéro, titre ou paroles...',
 				startTypingTitle: 'Commencez à saisir pour rechercher',
-				startTypingText: 'Recherchez par numéro, titre ou sous-titre.',
+				startTypingText: 'Recherchez par numéro, titre ou paroles.',
 				noResultsTitle: 'Aucun résultat',
 				noResultsText: 'Essayez un autre titre ou numéro.',
 				results_one: '{{count}} résultat',
@@ -299,6 +301,7 @@ const resources = {
 		translation: {
 			tabs: {
 				home: 'Ahabanza',
+				search: 'Shakisha',
 				recent: 'Iheruka',
 				favorites: 'Ibyo Ukunda',
 				library: 'Isomero',
@@ -339,9 +342,9 @@ const resources = {
 			},
 			search: {
 				title: 'Shakisha',
-				searchPlaceholder: 'Shakisha ukoresheje nimero cyangwa umutwe...',
+				searchPlaceholder: 'Shakisha ukoresheje nimero, umutwe cyangwa amagambo...',
 				startTypingTitle: 'Tangira wandika ushake',
-				startTypingText: 'Shakisha ukoresheje nimero, umutwe cyangwa sub-title.',
+				startTypingText: "Shakisha ukoresheje nimero, umutwe cyangwa amagambo y'indirimbo.",
 				noResultsTitle: 'Nta bisubizo bibonetse',
 				noResultsText: 'Gerageza indi nimero cyangwa undi mutwe.',
 				results_one: 'Igisubizo {{count}}',

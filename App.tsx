@@ -7,6 +7,7 @@ import SongDetailScreen from './src/SongDetailScreen';
 import { NavigationContainer } from "@react-navigation/native";
 import SplashScreen from "./src/SplashScreen";
 import FavoriteSongsScreen from "./src/FavoriteSongsScreen";
+import SearchScreen from './src/SearchScreen';
 import RecentScreen from './src/RecentScreen';
 import CollectionsScreen from './src/CollectionsScreen';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -19,6 +20,7 @@ const RootStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const TAB_ROUTES = {
 	HOME: 'HomeTab',
+	SEARCH: 'SearchTab',
 	RECENT: 'RecentTab',
 	FAVORITES: 'FavoritesTab',
 	LIBRARY: 'LibraryTab',
@@ -65,6 +67,8 @@ const MainTabsNavigator = () => {
 					let iconName = 'ellipse-outline';
 					if (route.name === TAB_ROUTES.HOME) {
 						iconName = focused ? 'home' : 'home-outline';
+					} else if (route.name === TAB_ROUTES.SEARCH) {
+						iconName = focused ? 'search' : 'search-outline';
 					} else if (route.name === TAB_ROUTES.RECENT) {
 						iconName = focused ? 'time' : 'time-outline';
 					} else if (route.name === TAB_ROUTES.FAVORITES) {
@@ -87,6 +91,11 @@ const MainTabsNavigator = () => {
 				name={TAB_ROUTES.HOME}
 				component={SongListScreen}
 				options={{ title: t('tabs.home') }}
+			/>
+			<Tab.Screen
+				name={TAB_ROUTES.SEARCH}
+				component={SearchScreen}
+				options={{ title: t('tabs.search') }}
 			/>
 			<Tab.Screen
 				name={TAB_ROUTES.RECENT}
