@@ -1,4 +1,6 @@
-// Word timing for the "follow along" karaoke view. Data: lyricTiming.json (generated offline).
+// Word timing for the "follow along" karaoke view. Data: one file per edition, generated offline:
+// lyricTiming.json (rw), lyricTiming_fr.json, lyricTiming_en.json, lyricTiming_ee.json. Word and
+// syllable indices are relative to that edition's own songs file.
 // Event = [verseIdx, lineIdx, wordIdx, startMs, endMs]; events are sorted by startMs and a word
 // can appear more than once (repeated lines).
 
@@ -94,23 +96,32 @@ export const getLineProgress = (
 	return lineEvents && lineEvents[0] < activeEventIndex ? LINE_DONE_PROGRESS : LINE_UPCOMING_PROGRESS;
 };
 
-let loaded: Record<string, HymnTiming> | null = null;
-
-const loadAll = (): Record<string, HymnTiming> => {
-	if (!loaded) {
-		const raw = require('./lyricTiming.json') as RawLyricTiming;
-		loaded = {};
-		Object.keys(raw.hymns).forEach((number) => {
-			const hymn = raw.hymns[number];
-			if (hymn.events?.length) {
-				loaded![number] = buildHymnTiming(hymn, raw.version);
-			}
-		});
-	}
-	return loaded;
+// Metro needs static require paths, so each edition's file is listed here and read on first use.
+const TIMING_SOURCES: Record<string, () => RawLyricTiming> = {
+	'hymnes-rw': () => require('./lyricTiming.json'),
+	'hymnes-fr': () => require('./lyricTiming_fr.json'),
+	'hymnes-en': () => require('./lyricTiming_en.json'),
+	'hymnes-ee': () => require('./lyricTiming_ee.json'),
 };
 
-export const getHymnTiming = (songNumber: number | string): HymnTiming | null => {
+const loaded: Record<string, Record<string, HymnTiming>> = {};
+
+const loadCollection = (collectionId: string): Record<string, HymnTiming> => {
+	if (!loaded[collectionId]) {
+		const timings: Record<string, HymnTiming> = {};
+		const raw = TIMING_SOURCES[collectionId]?.();
+		Object.keys(raw?.hymns || {}).forEach((number) => {
+			const hymn = raw.hymns[number];
+			if (hymn.events?.length) {
+				timings[number] = buildHymnTiming(hymn, raw.version);
+			}
+		});
+		loaded[collectionId] = timings;
+	}
+	return loaded[collectionId];
+};
+
+export const getHymnTiming = (songNumber: number | string, collectionId: string): HymnTiming | null => {
 	const numeric = Number(songNumber);
-	return loadAll()[Number.isFinite(numeric) ? String(numeric) : String(songNumber)] ?? null;
+	return loadCollection(collectionId)[Number.isFinite(numeric) ? String(numeric) : String(songNumber)] ?? null;
 };

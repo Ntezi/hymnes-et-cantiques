@@ -95,4 +95,12 @@ const t2b = buildHymnTiming({ events: [...v2, [0, 1, 0, 0, 5, 6000, 7000]] }, 2)
 assert.equal(getLineProgress(t2b, '0-0', 9).word, LINE_DONE);
 assert.deepEqual(getLineProgress(t2b, '0-1', 4), UP);
 
+// One timing file per edition, all version 2 (empty ones are placeholders until data exists).
+import fs from 'node:fs';
+for (const name of ['lyricTiming.json', 'lyricTiming_fr.json', 'lyricTiming_en.json', 'lyricTiming_ee.json']) {
+	const file = JSON.parse(fs.readFileSync(new URL(`../../src/${name}`, import.meta.url), 'utf8'));
+	assert.equal(file.version, 2, name);
+	assert.equal(typeof file.hymns, 'object', name);
+}
+
 console.log('lyricTiming tests passed');

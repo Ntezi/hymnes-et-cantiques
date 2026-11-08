@@ -69,8 +69,6 @@ import {
 import { HE_C_AUDIO } from '../audio';
 
 const SHOW_MELODY_PLAYBACK = true;
-// Follow-along only for the Kinyarwanda hymnal: the piano audio and lyricTiming.json come from it.
-const FOLLOW_ALONG_COLLECTION_ID = 'hymnes-rw';
 // Auto-scroll stays off this long after the user scrolls by hand.
 const MANUAL_SCROLL_HOLD_MS = 4000;
 const AUTO_SCROLL_TOP_MARGIN = 60;
@@ -150,7 +148,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const hasMelodySource = Boolean(localAsset);
 	const textNote = useMemo(() => getTextNote(collection_id, song_number), [collection_id, song_number]);
 	const hymnTiming = useMemo(
-		() => (collection_id === FOLLOW_ALONG_COLLECTION_ID && hasMelodySource ? getHymnTiming(song_number) : null),
+		() => (hasMelodySource ? getHymnTiming(song_number, collection_id) : null),
 		[collection_id, song_number, hasMelodySource]
 	);
 	const karaokeOn = followAlong && hymnTiming !== null;
@@ -326,7 +324,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	useEffect(() => {
 		let cancelled = false;
 		setSyncOffsetMs(0);
-		loadLyricSyncOffset(song_number).then((offset) => {
+		loadLyricSyncOffset(collection_id, song_number).then((offset) => {
 			if (!cancelled) {
 				setSyncOffsetMs(offset);
 			}
@@ -334,12 +332,12 @@ const SongDetailScreen = ({ route, navigation }) => {
 		return () => {
 			cancelled = true;
 		};
-	}, [song_number]);
+	}, [collection_id, song_number]);
 
 	const onNudgeSync = (deltaMs: number) => {
 		const next = clampLyricSyncOffset(syncOffsetMs + deltaMs);
 		setSyncOffsetMs(next);
-		saveLyricSyncOffset(song_number, next);
+		saveLyricSyncOffset(collection_id, song_number, next);
 	};
 
 	useEffect(() => {
