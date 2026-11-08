@@ -448,7 +448,7 @@ const resources = {
 			},
 			melody: {
 				play: 'Tangira',
-				pause: 'Hagarika',
+				pause: 'Hagarika gato',
 				back10: 'Subira inyuma amasegonda 10',
 				forward10: 'Jya imbere amasegonda 10',
 				seek: 'Aho indirimbo igeze',
