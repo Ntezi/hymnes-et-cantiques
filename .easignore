@@ -1,0 +1,18 @@
+.git/
+.github/
+.firebase/
+.firecrawl/
+.expo/
+node_modules/
+dist/
+web-build/
+build/
+android/
+ios/
+Mobile App Redesign/
+docs/
+Hymnes_et_Cantinques.pdf
+APP_FEATURES_UI_DOCUMENTATION.md
+songs_v2.json
+*.log
+.DS_Store

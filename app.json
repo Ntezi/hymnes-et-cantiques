@@ -2,17 +2,27 @@
   "expo": {
     "name": "Hymnes et Cantiques",
     "slug": "hymnes-et-cantiques",
-    "version": "1.0.0",
+    "icon": "./assets/app-icon.png",
+    "version": "1.1.0",
     "orientation": "portrait",
     "scheme": "demo",
     "sdkVersion": "48.0.0",
+    "splash": {
+      "image": "./assets/app-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6d3549"
+    },
     "ios": {
       "bundleIdentifier": "rw.ntezi.hymnes-et-cantiques",
-      "buildNumber": "1.0.0"
+      "buildNumber": "1.1.0"
     },
     "android": {
       "package": "rw.ntezi.hymnes_et_cantiques",
-      "versionCode": 1
+      "versionCode": 3,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon.png",
+        "backgroundColor": "#6d3549"
+      }
     },
     "extra": {
       "eas": {
