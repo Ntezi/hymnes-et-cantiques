@@ -200,17 +200,27 @@ const SongDetailScreen = ({ route, navigation }) => {
 		});
 
 		(async () => {
-			const [loadedCategories, melodyLinkMap, hasOverrides] = await Promise.all([
-				loadFavoriteCategories(),
-				loadMelodyLinkMap(),
-				hasUserMelodyOverrides(),
-			]);
+			const loadedCategories = await loadFavoriteCategories();
 			setFavoriteCategories(loadedCategories);
-			setHasMelodyOverrides(hasOverrides);
-			setSameMelodySongIdsState(getSameMelodySongIds(song_id, melodyLinkMap));
 			await addRecentSongId(song_id);
 		})();
 	}, [navigation, song_number, title, song_id]);
+
+	// Links can change on a hymn pushed on top of this one (or by Reset), so reload them on
+	// every focus; otherwise Save here would write back stale links.
+	const refreshMelodyLinks = async () => {
+		const [melodyLinkMap, hasOverrides] = await Promise.all([
+			loadMelodyLinkMap(),
+			hasUserMelodyOverrides(),
+		]);
+		setHasMelodyOverrides(hasOverrides);
+		setSameMelodySongIdsState(getSameMelodySongIds(song_id, melodyLinkMap));
+	};
+
+	useEffect(() => {
+		refreshMelodyLinks();
+		return navigation.addListener('focus', refreshMelodyLinks);
+	}, [navigation, song_id]);
 
 	// Audio is not loaded when the hymn opens. It loads on the first Play (see loadAndPlayMelody)
 	// and is released when the hymn changes, the screen loses focus or unmounts.
@@ -346,18 +356,27 @@ const SongDetailScreen = ({ route, navigation }) => {
 		);
 	};
 
+	// If storage fails the sheet stays open and the lists are re-read, so the UI matches what is stored.
 	const saveSameMelodySongs = async (linkedSongIds: string[]) => {
-		const updatedLinkMap = await setSameMelodySongIds(song_id, linkedSongIds);
-		setSameMelodySongIdsState(getSameMelodySongIds(song_id, updatedLinkMap));
-		setHasMelodyOverrides(await hasUserMelodyOverrides());
-		setIsSameMelodySheetVisible(false);
+		try {
+			await setSameMelodySongIds(song_id, linkedSongIds);
+			await refreshMelodyLinks();
+			setIsSameMelodySheetVisible(false);
+		} catch (err) {
+			console.error('Unable to save same-melody links:', err);
+			refreshMelodyLinks().catch(() => undefined);
+		}
 	};
 
 	const resetSameMelodyChanges = async () => {
-		const defaultLinkMap = await resetUserMelodyOverrides();
-		setSameMelodySongIdsState(getSameMelodySongIds(song_id, defaultLinkMap));
-		setHasMelodyOverrides(false);
-		setIsSameMelodySheetVisible(false);
+		try {
+			await resetUserMelodyOverrides();
+			await refreshMelodyLinks();
+			setIsSameMelodySheetVisible(false);
+		} catch (err) {
+			console.error('Unable to reset same-melody links:', err);
+			refreshMelodyLinks().catch(() => undefined);
+		}
 	};
 
 	const applyPlaybackStatus = (status: AVPlaybackStatusSuccess) => {
