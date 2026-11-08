@@ -134,6 +134,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const activeEventRef = useRef(-1);
 	const karaokeTimingRef = useRef<ReturnType<typeof getHymnTiming>>(null);
 	const syncOffsetRef = useRef(0);
+	const userNudgedRef = useRef(false);
 	const [followAlong, setFollowAlong] = useState(true);
 	const [syncOffsetMs, setSyncOffsetMs] = useState(0);
 	const karaokeStore = useMemo(createKaraokeStore, []);
@@ -351,9 +352,11 @@ const SongDetailScreen = ({ route, navigation }) => {
 
 	useEffect(() => {
 		let cancelled = false;
+		userNudgedRef.current = false;
 		setSyncOffsetMs(0);
 		loadLyricSyncOffset(collection_id, song_number).then((offset) => {
-			if (!cancelled) {
+			// A tap that came in before the stored value loaded wins.
+			if (!cancelled && !userNudgedRef.current) {
 				setSyncOffsetMs(offset);
 			}
 		});
@@ -363,6 +366,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	}, [collection_id, song_number]);
 
 	const onNudgeSync = (deltaMs: number) => {
+		userNudgedRef.current = true;
 		const next = clampLyricSyncOffset(syncOffsetMs + deltaMs);
 		setSyncOffsetMs(next);
 		saveLyricSyncOffset(collection_id, song_number, next);
