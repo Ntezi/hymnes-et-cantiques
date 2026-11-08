@@ -31,7 +31,7 @@ import {
 	findActiveEventIndex,
 	getHymnTiming,
 	getLineProgress,
-	LINE_UPCOMING,
+	LINE_UPCOMING_PROGRESS,
 } from './lyricTiming';
 import {
 	audioService,
@@ -804,16 +804,17 @@ const SongDetailScreen = ({ route, navigation }) => {
 							>
 								{lines.map((line, lineIndex) => {
 									const lineKey = buildLineKey(index, lineIndex);
+									const lineProgress = hymnTiming && activeEvent
+										? getLineProgress(hymnTiming, lineKey, activeEventIndex)
+										: LINE_UPCOMING_PROGRESS;
 									return (
 										<LyricLine
 											key={lineKey}
 											line={line}
 											lineKey={lineKey}
-											progress={
-												hymnTiming && activeEvent
-													? getLineProgress(hymnTiming, lineKey, activeEventIndex)
-													: LINE_UPCOMING
-											}
+											progress={lineProgress.word}
+											charStart={lineProgress.charStart}
+											charEnd={lineProgress.charEnd}
 											fontStyles={lyricFontStyles}
 											onLineLayout={onLineLayout}
 										/>

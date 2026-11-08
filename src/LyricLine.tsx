@@ -16,16 +16,19 @@ export interface LyricFontStyles {
 interface LyricLineProps {
 	line: string;
 	lineKey: string;
-	// -1: nothing sung; k: words before k are sung and word k is current; huge: whole line sung.
+	// Word state: -1 nothing sung; k = words before k sung and word k current; huge = whole line sung.
 	progress: number;
+	// Current syllable inside word `progress`: before charStart sung, [charStart, charEnd) current.
+	charStart: number;
+	charEnd: number;
 	fontStyles: LyricFontStyles;
 	onLineLayout: (lineKey: string, y: number, height: number) => void;
 }
 
-// Word colouring follows the text colour only (no background): sung = accent,
-// current = accent + bold, upcoming = normal. Word k is the k-th whitespace-separated
+// Colouring follows the text colour only (no background): sung = accent, current syllable =
+// accent + bold, upcoming = normal. Word k is the k-th whitespace-separated
 // word after the verse number, which is how lyricTiming.json indexes words.
-const LyricLine = ({ line, lineKey, progress, fontStyles, onLineLayout }: LyricLineProps) => {
+const LyricLine = ({ line, lineKey, progress, charStart, charEnd, fontStyles, onLineLayout }: LyricLineProps) => {
 	const verseNumberMatch = line.match(VERSE_NUMBER_REGEX);
 	const verseNumber = verseNumberMatch?.[1];
 	const content = verseNumberMatch ? verseNumberMatch[2] : line;
@@ -40,23 +43,43 @@ const LyricLine = ({ line, lineKey, progress, fontStyles, onLineLayout }: LyricL
 			}
 
 			wordIndex += 1;
-			const wordStyle =
-				wordIndex < progress ? styles.sungWord : wordIndex === progress ? styles.currentWord : null;
+			// [text, style] pieces: a word before the current one is all sung, the current word
+			// splits into sung / current syllable / upcoming, later words are plain.
+			let pieces: Array<[string, typeof styles.sungWord | null]>;
+			if (wordIndex < progress) {
+				pieces = [[token, styles.sungWord]];
+			} else if (wordIndex === progress) {
+				const start = Math.min(charStart, token.length);
+				const end = Math.min(Math.max(charEnd, start), token.length);
+				pieces = [
+					[token.slice(0, start), styles.sungWord],
+					[token.slice(start, end), styles.currentWord],
+					[token.slice(end), null],
+				];
+			} else {
+				pieces = [[token, null]];
+			}
 
 			return (
-				<Text key={tokenIndex} style={[styles.verseText, fontStyles.text, wordStyle]}>
-					{token
-						.split(REPEAT_MARKER_SPLIT_REGEX)
-						.filter(segment => segment.length > 0)
-						.map((segment, segmentIndex) =>
-							REPEAT_MARKER_REGEX.test(segment) ? (
-								<Text key={segmentIndex} style={[styles.singingInstructions, fontStyles.instructions]}>
-									{segment}
-								</Text>
-							) : (
-								segment
-							)
-						)}
+				<Text key={tokenIndex} style={[styles.verseText, fontStyles.text]}>
+					{pieces
+						.filter(([text]) => text.length > 0)
+						.map(([text, pieceStyle], pieceIndex) => (
+							<Text key={pieceIndex} style={pieceStyle}>
+								{text
+									.split(REPEAT_MARKER_SPLIT_REGEX)
+									.filter(segment => segment.length > 0)
+									.map((segment, segmentIndex) =>
+										REPEAT_MARKER_REGEX.test(segment) ? (
+											<Text key={segmentIndex} style={[styles.singingInstructions, fontStyles.instructions]}>
+												{segment}
+											</Text>
+										) : (
+											segment
+										)
+									)}
+							</Text>
+						))}
 				</Text>
 			);
 		});
