@@ -12,6 +12,7 @@ def clean(t):
     t=re.sub('\u0335\\s*\u0283','\u0192',t); t=re.sub('\u0283\\s*\u0335','\u0192',t)
     t=re.sub('\\s*\u0335\\s*\u01a9','\u0191',t)
     t=t.replace('\u0283','\u0192').replace('\u01a9','\u0191').replace('\u0335','')
+    t=t.replace('\u0110','\u0189').replace('\u0111','\u0256').replace('\u019e','\u014b').replace('\u0315','')
     t=t.replace('\u00ad','').replace('\xa0',' ').replace('\u202f',' ').replace('\u2019',"'").replace('\u2018',"'")
     return unicodedata.normalize('NFC',t)
 # ---- collect per page items
@@ -137,12 +138,27 @@ def text_verses(h):
         cur=[parts[0]]
         groups=[]
         for prt in parts[1:]:
-            if prt[0]-cur[-1][1]>15: groups.append(cur); cur=[prt]
+            if prt[0]-cur[-1][1]>4.5: groups.append(cur); cur=[prt]
             else: cur.append(prt)
         groups.append(cur)
         for g in groups:
             txt=re.sub(r'\s+',' ',''.join(t for _,_,t in g)).strip()
-            if txt: segs.append((pi,0 if g[0][0]<140 else 1,y,txt))
+            if txt: segs.append((pi,0 if g[0][0]<110 else 1,y,txt))
+    MK=re.compile(r'^\((bis|ter|x\s*\d|\d)\)\.?$|^(bis|ter)$',re.I)
+    keep=[]
+    for sg in segs:
+        if MK.match(sg[3]):
+            tgt=[x for x in keep if x[0]==sg[0] and abs(x[2]-sg[2])<=2]
+            if not tgt: tgt=[x for x in segs if x is not sg and x[0]==sg[0] and abs(x[2]-sg[2])<=2 and not MK.match(x[3])]
+            if not tgt:
+                cand=[x for x in segs if x is not sg and x[0]==sg[0] and 0<=sg[2]-x[2]<=12 and not MK.match(x[3]) and x[1]==0]
+                tgt=sorted(cand,key=lambda x:x[2])[-1:] if cand else []
+            if tgt:
+                t0=tgt[-1]; i=segs.index(t0); segs[i]=(t0[0],t0[1],t0[2],t0[3]+' '+sg[3])
+                keep=[segs[i] if (x[0],x[1],x[2])==(t0[0],t0[1],t0[2]) else x for x in keep]
+                continue
+        keep.append(sg)
+    segs=[x for x in segs if not MK.match(x[3])]
     segs.sort()
     verses=[]
     for pi,col,y,s_ in segs:
@@ -156,6 +172,8 @@ def nsyl(s):
     s=unicodedata.normalize('NFD',s.lower()); s=''.join(c for c in s if unicodedata.category(c)!='Mn')
     return max(1,len(re.findall(r'[aeiouɛɔ]+',s)))
 def split_lines(wordsyl, ref):
+    if ref and len(ref)>=4 and sum(ref)/len(ref)<5:
+        ref=[sum(ref[i:i+2]) for i in range(0,len(ref),2)]
     # wordsyl: list of (word, nsyl, endsPunct); ref: syllable counts per line
     if not ref: return [' '.join(w for w,_,_ in wordsyl)]
     cum=[0]
@@ -286,6 +304,10 @@ for n in range(1,272):
     verses_out.sort(key=lambda x:x[0])
     vstr=[f"{v}. "+'\n'.join(l) for v,l in verses_out if l]
     first=verses_out[0][1][0] if verses_out and verses_out[0][1] else ''
+    tw=first.split()
+    m=re.search(r'[,;:!?.]',first)
+    if m and len(first[:m.start()].split())>=2: first=first[:m.start()]
+    if len(first.split())>7: first=' '.join(first.split()[:6])
     title=re.sub(r'[\s,;:.!?]+$','',first).upper()
     songs.append(dict(song_number=n,title=title,sub_title="",verses=vstr))
     report.append(dict(n=n,layout='multi' if multi_verse else 'repeat',blocks=[len(b[0]) for b in blocks],staff_verses=sorted(verses_staff),text_verses=[v for v,_ in tv],refrain=len(refrain),midi_v1=ref1,lines=[len(l) for _,l in verses_out]))
