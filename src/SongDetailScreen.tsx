@@ -6,6 +6,7 @@ import {
 	ScrollView,
 	TouchableOpacity,
 	useWindowDimensions,
+	InteractionManager,
 	NativeScrollEvent,
 	NativeSyntheticEvent,
 } from 'react-native';
@@ -144,10 +145,18 @@ const SongDetailScreen = ({ route, navigation }) => {
 	}, [song_number]);
 	const hasMelodySource = Boolean(localAsset);
 	const textNote = useMemo(() => getTextNote(collection_id, song_number), [collection_id, song_number]);
-	const hymnTiming = useMemo(
-		() => (hasMelodySource ? getHymnTiming(song_number, collection_id) : null),
-		[collection_id, song_number, hasMelodySource]
-	);
+	// The timing file is read after the open transition, never during render.
+	const [hymnTiming, setHymnTiming] = useState<ReturnType<typeof getHymnTiming>>(null);
+	useEffect(() => {
+		setHymnTiming(null);
+		if (!hasMelodySource) {
+			return undefined;
+		}
+		const task = InteractionManager.runAfterInteractions(() => {
+			setHymnTiming(getHymnTiming(song_number, collection_id));
+		});
+		return () => task.cancel();
+	}, [collection_id, song_number, hasMelodySource]);
 	const karaokeOn = followAlong && hymnTiming !== null;
 	const karaokeVisible = karaokeOn && hasPlaybackStarted;
 	const activeEvent = karaokeVisible ? hymnTiming?.events[activeEventIndex] : undefined;

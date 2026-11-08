@@ -104,24 +104,28 @@ const TIMING_SOURCES: Record<string, () => RawLyricTiming> = {
 	'hymnes-ee': () => require('./lyricTiming_ee.json'),
 };
 
-const loaded: Record<string, Record<string, HymnTiming>> = {};
+type TimingSources = Record<string, () => RawLyricTiming | undefined>;
 
-const loadCollection = (collectionId: string): Record<string, HymnTiming> => {
-	if (!loaded[collectionId]) {
-		const timings: Record<string, HymnTiming> = {};
-		const raw = TIMING_SOURCES[collectionId]?.();
-		Object.keys(raw?.hymns || {}).forEach((number) => {
-			const hymn = raw.hymns[number];
-			if (hymn.events?.length) {
-				timings[number] = buildHymnTiming(hymn, raw.version);
-			}
-		});
-		loaded[collectionId] = timings;
-	}
-	return loaded[collectionId];
+// Only the requested hymn is indexed (and cached); the edition's file is read once, on first use.
+export const createHymnTimingLoader = (sources: TimingSources) => {
+	const raws: Record<string, RawLyricTiming | undefined> = {};
+	const built: Record<string, Record<string, HymnTiming | null>> = {};
+
+	return (songNumber: number | string, collectionId: string): HymnTiming | null => {
+		if (!(collectionId in raws)) {
+			raws[collectionId] = sources[collectionId]?.();
+			built[collectionId] = {};
+		}
+		const numeric = Number(songNumber);
+		const key = Number.isFinite(numeric) ? String(numeric) : String(songNumber);
+		const cache = built[collectionId];
+		if (!(key in cache)) {
+			const raw = raws[collectionId];
+			const hymn = raw?.hymns?.[key];
+			cache[key] = hymn?.events?.length ? buildHymnTiming(hymn, raw?.version) : null;
+		}
+		return cache[key];
+	};
 };
 
-export const getHymnTiming = (songNumber: number | string, collectionId: string): HymnTiming | null => {
-	const numeric = Number(songNumber);
-	return loadCollection(collectionId)[Number.isFinite(numeric) ? String(numeric) : String(songNumber)] ?? null;
-};
+export const getHymnTiming = createHymnTimingLoader(TIMING_SOURCES);

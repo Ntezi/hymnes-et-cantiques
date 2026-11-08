@@ -5,6 +5,7 @@ import {
 	WHOLE_WORD_END,
 	buildHymnTiming,
 	buildLineKey,
+	createHymnTimingLoader,
 	findActiveEventIndex,
 	getLineProgress,
 } from '../../src/lyricTiming.ts';
@@ -101,6 +102,28 @@ for (const name of ['lyricTiming.json', 'lyricTiming_fr.json', 'lyricTiming_en.j
 	const file = JSON.parse(fs.readFileSync(new URL(`../../src/${name}`, import.meta.url), 'utf8'));
 	assert.equal(file.version, 2, name);
 	assert.equal(typeof file.hymns, 'object', name);
+}
+
+// --- The loader reads an edition once and indexes only the hymn that is asked for.
+{
+	let reads = 0;
+	const touched = [];
+	const hymn = (n) => ({
+		get events() { touched.push(n); return [[0, 0, 0, 0, 5, 1000, 2000]]; },
+	});
+	const load = createHymnTimingLoader({
+		'hymnes-xx': () => { reads += 1; return { version: 2, hymns: { 1: hymn(1), 2: hymn(2), 3: { events: [] } } }; },
+	});
+	assert.equal(reads, 0, 'nothing is read before the first request');
+	const first = load('2', 'hymnes-xx');
+	assert.ok(first && first.events.length === 1);
+	assert.equal(reads, 1);
+	assert.ok(!touched.includes(1), 'other hymns are not indexed');
+	assert.equal(load(2, 'hymnes-xx'), first, 'result is memoised');
+	assert.equal(load('3', 'hymnes-xx'), null, 'empty hymn has no timing');
+	assert.equal(load('9', 'hymnes-xx'), null, 'unknown hymn has no timing');
+	assert.equal(load('1', 'unknown'), null, 'unknown edition has no timing');
+	assert.equal(reads, 1, 'edition read once');
 }
 
 console.log('lyricTiming tests passed');
