@@ -135,7 +135,17 @@ const loadOverrides = async (): Promise<MelodyLinkOverrides> => {
 		return normalizeOverrides(JSON.parse(raw));
 	}
 
-	// First run of this version: bring over overrides keyed by song_id, merging editions by hymn number.
+	// Concurrent first loads share one migration.
+	migrationPromise = migrationPromise || migrateToV2().finally(() => {
+		migrationPromise = null;
+	});
+	return migrationPromise;
+};
+
+let migrationPromise: Promise<MelodyLinkOverrides> | null = null;
+
+// First run of this version: bring over overrides keyed by song_id, merging editions by hymn number.
+const migrateToV2 = async (): Promise<MelodyLinkOverrides> => {
 	const songIdRaw = await AsyncStorage.getItem(SONG_ID_OVERRIDES_KEY);
 	const migrated = songIdRaw ? normalizeOverrides(JSON.parse(songIdRaw)) : await migrateLegacyStorage();
 	const overrides = migrated || emptyOverrides();
