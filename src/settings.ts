@@ -35,3 +35,29 @@ export const saveLyricsFontStep = async (step: number): Promise<void> => {
 		// Not persisting is acceptable; the size still applies for this session.
 	}
 };
+
+// Follow-along timing nudge, per hymn number (ms). Positive = words change colour later.
+export const LYRIC_SYNC_STEP_MS = 250;
+export const LYRIC_SYNC_MAX_MS = 5000;
+const lyricSyncKey = (songNumber: number | string) => `settings_lyric_sync_ms_${songNumber}`;
+
+export const clampLyricSyncOffset = (offsetMs: number): number =>
+	Math.min(LYRIC_SYNC_MAX_MS, Math.max(-LYRIC_SYNC_MAX_MS, Math.round(offsetMs)));
+
+export const loadLyricSyncOffset = async (songNumber: number | string): Promise<number> => {
+	try {
+		const raw = await AsyncStorage.getItem(lyricSyncKey(songNumber));
+		const parsed = raw === null ? NaN : Number(raw);
+		return Number.isFinite(parsed) ? clampLyricSyncOffset(parsed) : 0;
+	} catch {
+		return 0;
+	}
+};
+
+export const saveLyricSyncOffset = async (songNumber: number | string, offsetMs: number): Promise<void> => {
+	try {
+		await AsyncStorage.setItem(lyricSyncKey(songNumber), String(clampLyricSyncOffset(offsetMs)));
+	} catch {
+		// Not persisting is acceptable; the nudge still applies for this session.
+	}
+};

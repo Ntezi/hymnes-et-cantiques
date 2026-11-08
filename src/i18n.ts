@@ -140,6 +140,10 @@ const resources = {
 				unavailable: 'Melody audio is not available for this song yet.',
 				buffering: 'Buffering...',
 				stop: 'Stop',
+				followAlong: 'Follow along',
+				syncTitle: 'Lyrics timing',
+				syncEarlier: 'Colour words 0.25 s earlier',
+				syncLater: 'Colour words 0.25 s later',
 			},
 			songDetail: {
 				positionOf: '{{current}} of {{total}}',
@@ -298,6 +302,10 @@ const resources = {
 				unavailable: "La mélodie n'est pas encore disponible pour ce cantique.",
 				buffering: 'Mise en mémoire...',
 				stop: 'Stop',
+				followAlong: 'Suivre les paroles',
+				syncTitle: 'Synchronisation des paroles',
+				syncEarlier: 'Colorer les mots 0,25 s plus tôt',
+				syncLater: 'Colorer les mots 0,25 s plus tard',
 			},
 			songDetail: {
 				positionOf: '{{current}} sur {{total}}',
@@ -456,6 +464,10 @@ const resources = {
 				unavailable: "Audio y'injyana ntabwo iraboneka kuri iyi ndirimbo.",
 				buffering: 'Irimo gupakira...',
 				stop: 'Hagarika',
+				followAlong: 'Kurikira amagambo',
+				syncTitle: 'Guhuza amagambo n\'injyana',
+				syncEarlier: 'Amagambo agaragare hakiri kare (0.25 s)',
+				syncLater: 'Amagambo agaragare nyuma (0.25 s)',
 			},
 			songDetail: {
 				positionOf: '{{current}} kuri {{total}}',

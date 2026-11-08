@@ -1,5 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+	View,
+	Text,
+	StyleSheet,
+	ScrollView,
+	TouchableOpacity,
+	useWindowDimensions,
+	NativeScrollEvent,
+	NativeSyntheticEvent,
+} from 'react-native';
 import SafeAreaView from "react-native-safe-area-view";
 import {
 	HandlerStateChangeEvent,
@@ -15,9 +24,20 @@ import SameMelodySheet from './SameMelodySheet';
 import { AVPlaybackStatusSuccess } from 'expo-av';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import MelodyPlayerControl from './MelodyPlayerControl';
-import HighlightedText from './HighlightedText';
-import { getActiveTimedLine, getActiveTimedLineKey, getSongMelodyMetadata } from './melodyMetadata';
-import { audioService } from './services/audioService';
+import LyricLine from './LyricLine';
+import { getSongMelodyMetadata } from './melodyMetadata';
+import {
+	buildLineKey,
+	findActiveEventIndex,
+	getHymnTiming,
+	getLineProgress,
+	LINE_UPCOMING,
+} from './lyricTiming';
+import {
+	audioService,
+	FOLLOW_ALONG_POLL_INTERVAL_MS,
+	PLAYBACK_POLL_INTERVAL_MS,
+} from './services/audioService';
 import LanguageSwitchSheet from './LanguageSwitchSheet';
 import { getCrossLanguageSongIds } from './crossLanguageMap';
 import {
@@ -37,39 +57,28 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
 	clampLyricsFontStep,
+	clampLyricSyncOffset,
 	getCachedLyricsFontStep,
 	LYRICS_FONT_SIZES,
 	loadLyricsFontStep,
+	loadLyricSyncOffset,
 	saveLyricsFontStep,
+	saveLyricSyncOffset,
 } from './settings';
 import { HE_C_AUDIO } from '../audio';
 
-const REPEAT_MARKER_SPLIT_REGEX = /(\((?:bis|ter|x\d+)\)|\bbis\b|\bter\b|\bx\d+\b|R:\/?)/gi;
-const REPEAT_MARKER_REGEX = /^(\((?:bis|ter|x\d+)\)|bis|ter|x\d+|R:\/?)$/i;
-const VERSE_NUMBER_REGEX = /^(\d+)\.\s*(.*)$/;
-const WHITESPACE_SEGMENT_REGEX = /^\s+$/;
 const SHOW_MELODY_PLAYBACK = true;
-const ENABLE_LYRIC_HIGHLIGHTING = false;
-const LYRIC_SYNC_LEAD_MS = 0;
+// Follow-along only for the Kinyarwanda hymnal: the piano audio and lyricTiming.json come from it.
+const FOLLOW_ALONG_COLLECTION_ID = 'hymnes-rw';
+// Auto-scroll stays off this long after the user scrolls by hand.
+const MANUAL_SCROLL_HOLD_MS = 4000;
+const AUTO_SCROLL_TOP_MARGIN = 60;
+const AUTO_SCROLL_BOTTOM_MARGIN = 120;
+const AUTO_SCROLL_TARGET_OFFSET = 180;
 const SWIPE_MIN_DISTANCE = 60;
 const SWIPE_MIN_VELOCITY = 500;
 // Swipes that start this close to the left edge are left to the system back gesture (iOS).
 const SWIPE_LEFT_EDGE_GUARD = 24;
-
-const tokenizeLyricWords = (text: string): string[] =>
-	text
-		.split(REPEAT_MARKER_SPLIT_REGEX)
-		.filter(segment => segment.length > 0)
-		.flatMap((segment) => {
-			if (REPEAT_MARKER_REGEX.test(segment.trim())) {
-				return [];
-			}
-
-			return segment
-				.split(/\s+/)
-				.map(word => word.trim())
-				.filter(Boolean);
-		});
 
 const SongDetailScreen = ({ route, navigation }) => {
 	const { t } = useTranslation();
@@ -110,8 +119,22 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const playbackEpochRef = useRef(0);
 	const playerPanRef = useRef<PanGestureHandler>(null);
 	const scrollViewRef = useRef<ScrollView | null>(null);
-	const lineOffsetMapRef = useRef<Record<string, number>>({});
-	const lastAutoScrollLineRef = useRef<string | null>(null);
+	const lineLayoutRef = useRef<Record<string, { y: number; height: number }>>({});
+	const cardYRef = useRef<Record<number, number>>({});
+	const versesWrapYRef = useRef(0);
+	const scrollYRef = useRef(0);
+	const viewportHeightRef = useRef(0);
+	const manualScrollAtRef = useRef(0);
+	const programmaticScrollUntilRef = useRef(0);
+	// Last audio status position, with the time it arrived, so the position can be interpolated.
+	const clockRef = useRef({ positionMs: 0, at: 0, isPlaying: false });
+	const lastUiPositionRef = useRef(0);
+	const activeEventRef = useRef(-1);
+	const karaokeTimingRef = useRef<ReturnType<typeof getHymnTiming>>(null);
+	const syncOffsetRef = useRef(0);
+	const [followAlong, setFollowAlong] = useState(true);
+	const [syncOffsetMs, setSyncOffsetMs] = useState(0);
+	const [activeEventIndex, setActiveEventIndex] = useState(-1);
 	const melodyMetadata = useMemo(
 		() => (SHOW_MELODY_PLAYBACK ? getSongMelodyMetadata(song_id) : null),
 		[song_id]
@@ -124,28 +147,16 @@ const SongDetailScreen = ({ route, navigation }) => {
 		return HE_C_AUDIO[String(song_number)] ?? null;
 	}, [song_number]);
 	const hasMelodySource = Boolean(localAsset);
-	const shouldHighlightLyrics =
-		ENABLE_LYRIC_HIGHLIGHTING && hasPlaybackStarted && (isPlaying || playbackPositionMs > 0);
-	const lyricSyncPositionMs = useMemo(
-		() => Math.max(0, playbackPositionMs + LYRIC_SYNC_LEAD_MS),
-		[playbackPositionMs]
+	const hymnTiming = useMemo(
+		() => (collection_id === FOLLOW_ALONG_COLLECTION_ID && hasMelodySource ? getHymnTiming(song_number) : null),
+		[collection_id, song_number, hasMelodySource]
 	);
-	const activeLineKey = useMemo(
-		() => (
-			SHOW_MELODY_PLAYBACK && shouldHighlightLyrics
-				? getActiveTimedLineKey(song_id, lyricSyncPositionMs)
-				: null
-		),
-		[song_id, lyricSyncPositionMs, shouldHighlightLyrics]
-	);
-	const activeTimedLine = useMemo(
-		() => (
-			SHOW_MELODY_PLAYBACK && shouldHighlightLyrics
-				? getActiveTimedLine(song_id, lyricSyncPositionMs)
-				: null
-		),
-		[song_id, lyricSyncPositionMs, shouldHighlightLyrics]
-	);
+	const karaokeOn = followAlong && hymnTiming !== null;
+	const karaokeVisible = karaokeOn && hasPlaybackStarted;
+	const activeEvent = karaokeVisible ? hymnTiming?.events[activeEventIndex] : undefined;
+	const activeLineKey = activeEvent ? buildLineKey(activeEvent[0], activeEvent[1]) : null;
+	karaokeTimingRef.current = karaokeVisible ? hymnTiming : null;
+	syncOffsetRef.current = syncOffsetMs;
 	const fallbackDurationMs = useMemo(
 		() => melodyMetadata?.timed_lines[melodyMetadata.timed_lines.length - 1]?.end_ms || 0,
 		[melodyMetadata]
@@ -228,6 +239,10 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const resetPlaybackState = () => {
 		playbackEpochRef.current += 1;
 		isMelodyLoadedRef.current = false;
+		clockRef.current = { positionMs: 0, at: 0, isPlaying: false };
+		lastUiPositionRef.current = 0;
+		activeEventRef.current = -1;
+		setActiveEventIndex(-1);
 		setPlaybackPositionMs(0);
 		setPlaybackDurationMs(0);
 		setIsPlaying(false);
@@ -238,8 +253,9 @@ const SongDetailScreen = ({ route, navigation }) => {
 	};
 
 	useEffect(() => {
-		lineOffsetMapRef.current = {};
-		lastAutoScrollLineRef.current = null;
+		lineLayoutRef.current = {};
+		cardYRef.current = {};
+		manualScrollAtRef.current = 0;
 		setIsLanguageSheetVisible(false);
 		setIsMelodyControlVisible(false);
 		resetPlaybackState();
@@ -267,22 +283,108 @@ const SongDetailScreen = ({ route, navigation }) => {
 		};
 	}, [audioOwnerId]);
 
+	// Position used for the colouring: last status position, advanced by the time since it arrived
+	// while playing, minus the user's sync nudge. Only re-renders when the active word changes.
+	const updateActiveEvent = () => {
+		const timing = karaokeTimingRef.current;
+		let next = -1;
+		if (timing) {
+			const clock = clockRef.current;
+			const positionMs =
+				clock.positionMs + (clock.isPlaying ? Date.now() - clock.at : 0) - syncOffsetRef.current;
+			next = findActiveEventIndex(timing.events, positionMs);
+		}
+		if (next !== activeEventRef.current) {
+			activeEventRef.current = next;
+			setActiveEventIndex(next);
+		}
+	};
+
 	useEffect(() => {
-		if (!activeLineKey || lastAutoScrollLineRef.current === activeLineKey) {
+		updateActiveEvent();
+	}, [karaokeVisible, hymnTiming, syncOffsetMs]);
+
+	useEffect(() => {
+		if (!karaokeVisible || !isPlaying) {
+			return undefined;
+		}
+		let frame = requestAnimationFrame(function tick() {
+			updateActiveEvent();
+			frame = requestAnimationFrame(tick);
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [karaokeVisible, isPlaying, hymnTiming]);
+
+	useEffect(() => {
+		if (isMelodyLoadedRef.current) {
+			audioService.setFollowAlongPollingAsync(karaokeOn).catch(() => undefined);
+		}
+	}, [karaokeOn]);
+
+	useEffect(() => {
+		let cancelled = false;
+		setSyncOffsetMs(0);
+		loadLyricSyncOffset(song_number).then((offset) => {
+			if (!cancelled) {
+				setSyncOffsetMs(offset);
+			}
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [song_number]);
+
+	const onNudgeSync = (deltaMs: number) => {
+		const next = clampLyricSyncOffset(syncOffsetMs + deltaMs);
+		setSyncOffsetMs(next);
+		saveLyricSyncOffset(song_number, next);
+	};
+
+	useEffect(() => {
+		if (!activeLineKey || Date.now() - manualScrollAtRef.current < MANUAL_SCROLL_HOLD_MS) {
 			return;
 		}
 
-		const lineY = lineOffsetMapRef.current[activeLineKey];
-		if (typeof lineY !== 'number') {
+		const layout = lineLayoutRef.current[activeLineKey];
+		const cardY = cardYRef.current[Number(activeLineKey.split('-')[0])];
+		if (!layout || typeof cardY !== 'number') {
 			return;
 		}
 
-		lastAutoScrollLineRef.current = activeLineKey;
+		const top = versesWrapYRef.current + cardY + layout.y;
+		const bottom = top + layout.height;
+		const viewTop = scrollYRef.current;
+		const viewBottom = viewTop + viewportHeightRef.current;
+		if (
+			viewportHeightRef.current > 0 &&
+			top >= viewTop + AUTO_SCROLL_TOP_MARGIN &&
+			bottom <= viewBottom - AUTO_SCROLL_BOTTOM_MARGIN
+		) {
+			return;
+		}
+
+		programmaticScrollUntilRef.current = Date.now() + 500;
 		scrollViewRef.current?.scrollTo({
-			y: Math.max(0, lineY - 180),
+			y: Math.max(0, top - AUTO_SCROLL_TARGET_OFFSET),
 			animated: true,
 		});
 	}, [activeLineKey]);
+
+	const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+		const y = event.nativeEvent.contentOffset.y;
+		const now = Date.now();
+		if (now < programmaticScrollUntilRef.current) {
+			// Our own animated scroll is still moving.
+			programmaticScrollUntilRef.current = now + 200;
+		} else if (y !== scrollYRef.current) {
+			manualScrollAtRef.current = now;
+		}
+		scrollYRef.current = y;
+	};
+
+	const onLineLayout = useCallback((lineKey: string, y: number, height: number) => {
+		lineLayoutRef.current[lineKey] = { y, height };
+	}, []);
 
 	const isFavorite = useMemo(
 		() => isSongInAnyFavoriteCategory(favoriteCategories, song_id),
@@ -381,7 +483,14 @@ const SongDetailScreen = ({ route, navigation }) => {
 	};
 
 	const applyPlaybackStatus = (status: AVPlaybackStatusSuccess) => {
-		setPlaybackPositionMs(status.positionMillis || 0);
+		const positionMs = status.positionMillis || 0;
+		clockRef.current = { positionMs, at: Date.now(), isPlaying: Boolean(status.isPlaying) };
+		// The screen state only needs the slower seek-bar rate; the lyrics read clockRef.
+		if (!status.isPlaying || Math.abs(positionMs - lastUiPositionRef.current) >= PLAYBACK_POLL_INTERVAL_MS - 50) {
+			lastUiPositionRef.current = positionMs;
+			setPlaybackPositionMs(positionMs);
+		}
+		updateActiveEvent();
 		setPlaybackDurationMs(status.durationMillis || 0);
 		setIsPlaying(Boolean(status.isPlaying));
 		setIsBuffering(Boolean(status.isBuffering));
@@ -406,7 +515,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 					if (epoch === playbackEpochRef.current) {
 						applyPlaybackStatus(status);
 					}
-				}
+				},
+				karaokeOn ? FOLLOW_ALONG_POLL_INTERVAL_MS : PLAYBACK_POLL_INTERVAL_MS
 			);
 			if (epoch !== playbackEpochRef.current) {
 				return;
@@ -456,6 +566,8 @@ const SongDetailScreen = ({ route, navigation }) => {
 			await audioService.stopAsync();
 			setHasPlaybackStarted(false);
 			setPlaybackPositionMs(0);
+			clockRef.current = { positionMs: 0, at: Date.now(), isPlaying: false };
+			lastUiPositionRef.current = 0;
 		} catch {
 			setMelodyError(t('songDetail.unableToStopPlayback'));
 		}
@@ -463,6 +575,10 @@ const SongDetailScreen = ({ route, navigation }) => {
 
 	const onSeekPlayback = async (nextPositionMs: number) => {
 		try {
+			// Jump the lyrics now instead of waiting for the next status update.
+			manualScrollAtRef.current = 0;
+			clockRef.current = { ...clockRef.current, positionMs: nextPositionMs, at: Date.now() };
+			updateActiveEvent();
 			await audioService.seekToAsync(nextPositionMs);
 		} catch {
 			setMelodyError(t('songDetail.unableToSeek'));
@@ -473,82 +589,6 @@ const SongDetailScreen = ({ route, navigation }) => {
 		setMelodyError(null);
 		isMelodyLoadedRef.current = false;
 		loadAndPlayMelody();
-	};
-
-	const getActiveWordIndexForLine = (
-		lineKey: string,
-		lineText: string,
-		isActiveLine: boolean
-	): number | null => {
-		if (!isActiveLine || !activeTimedLine || activeTimedLine.line_key !== lineKey) {
-			return null;
-		}
-
-		const words = tokenizeLyricWords(lineText);
-		if (words.length === 0) {
-			return null;
-		}
-
-		const lineDurationMs = Math.max(1, activeTimedLine.end_ms - activeTimedLine.start_ms);
-		const relativeProgress = Math.max(
-			0,
-			Math.min(0.9999, (lyricSyncPositionMs - activeTimedLine.start_ms) / lineDurationMs)
-		);
-
-		return Math.min(words.length - 1, Math.floor(relativeProgress * words.length));
-	};
-
-	const renderPatternAwareText = (
-		text: string,
-		lineKey: string,
-		isActiveLine: boolean,
-		activeWordIndex: number | null
-	) => {
-		let wordCursor = 0;
-
-		return text
-			.split(REPEAT_MARKER_SPLIT_REGEX)
-			.filter(segment => segment.length > 0)
-			.flatMap((segment, segmentIndex) => {
-				const isRepeatToken = REPEAT_MARKER_REGEX.test(segment.trim());
-				if (isRepeatToken) {
-					return [
-						<HighlightedText
-							key={`${lineKey}-repeat-${segmentIndex}`}
-							isActive={isActiveLine}
-							style={[styles.singingInstructions, lyricFontStyles.instructions]}
-							activeStyle={styles.activeSingingInstructions}
-						>
-							{segment}
-						</HighlightedText>
-					];
-				}
-
-				return segment
-					.split(/(\s+)/)
-					.filter(token => token.length > 0)
-					.map((token, tokenIndex) => {
-						if (WHITESPACE_SEGMENT_REGEX.test(token)) {
-							return <Text key={`${lineKey}-space-${segmentIndex}-${tokenIndex}`}>{token}</Text>;
-						}
-
-						const currentWordIndex = wordCursor;
-						wordCursor += 1;
-						const isWordActive = isActiveLine && activeWordIndex === currentWordIndex;
-						const isLineFallbackActive = isActiveLine && activeWordIndex === null;
-
-						return (
-							<HighlightedText
-								key={`${lineKey}-word-${segmentIndex}-${tokenIndex}`}
-								isActive={isWordActive || isLineFallbackActive}
-								style={[styles.verseText, lyricFontStyles.text]}
-								activeStyle={isWordActive ? styles.activeWordText : styles.activeVerseText}
-							>
-								{token}
-							</HighlightedText>
-						);
-					});
-			});
 	};
 
 	// Labels under the action icons only on wide screens; phones show icons only to save vertical space.
@@ -620,39 +660,6 @@ const SongDetailScreen = ({ route, navigation }) => {
 		</TouchableOpacity>
 	);
 
-	const renderLine = (line: string, lineKey: string) => {
-		const verseNumberMatch = line.match(VERSE_NUMBER_REGEX);
-		const verseNumber = verseNumberMatch?.[1];
-		const verseBody = verseNumberMatch ? verseNumberMatch[2] : line;
-		const content = verseBody;
-		const isActiveLine = activeLineKey === lineKey;
-		const activeWordIndex = getActiveWordIndexForLine(lineKey, content, isActiveLine);
-
-		return (
-			<View
-				key={lineKey}
-				onLayout={(event) => {
-					lineOffsetMapRef.current[lineKey] = event.nativeEvent.layout.y;
-				}}
-				style={[styles.verseLineWrap, isActiveLine && styles.activeVerseLineWrap]}
-			>
-				<Text style={[styles.verseLine, lyricFontStyles.line]}>
-					{verseNumber ? (
-						<HighlightedText
-							style={[styles.verseNumber, lyricFontStyles.number]}
-							activeStyle={styles.activeVerseNumber}
-							isActive={isActiveLine}
-						>
-							{verseNumber}.
-						</HighlightedText>
-					) : null}
-					{verseNumber && content.length > 0 ? ' ' : null}
-					{renderPatternAwareText(content, lineKey, isActiveLine, activeWordIndex)}
-				</Text>
-			</View>
-		);
-	};
-
 	return (
 		<SafeAreaView style={styles.container}>
 			<PanGestureHandler
@@ -663,7 +670,18 @@ const SongDetailScreen = ({ route, navigation }) => {
 				onHandlerStateChange={onSwipeStateChange}
 			>
 			<View style={styles.swipeArea}>
-				<ScrollView ref={scrollViewRef} contentContainerStyle={styles.contentContainer}>
+				<ScrollView
+						ref={scrollViewRef}
+						contentContainerStyle={styles.contentContainer}
+						scrollEventThrottle={16}
+						onScroll={onScroll}
+						onScrollBeginDrag={() => {
+							manualScrollAtRef.current = Date.now();
+						}}
+						onLayout={(event) => {
+							viewportHeightRef.current = event.nativeEvent.layout.height;
+						}}
+					>
 					<View style={styles.songHeaderCard}>
 						<View style={styles.songTitleRow}>
 							<View style={styles.songNumberBadge}>
@@ -754,20 +772,53 @@ const SongDetailScreen = ({ route, navigation }) => {
 						onTogglePlayPause={onTogglePlayPause}
 						onStop={onStopPlayback}
 						onSeek={onSeekPlayback}
+						followAlong={hymnTiming ? {
+							enabled: followAlong,
+							syncOffsetMs,
+							onToggle: () => setFollowAlong(prev => !prev),
+							onNudge: onNudgeSync,
+						} : undefined}
 						onRetryLoad={onRetryMelodyLoad}
 					/>
 					</View>
 					</PanGestureHandler>
 				) : null}
 
-					<View style={styles.versesWrap}>
+					<View
+						style={styles.versesWrap}
+						onLayout={(event) => {
+							versesWrapYRef.current = event.nativeEvent.layout.y;
+						}}
+					>
 					{verses.map((verse, index) => {
 						const lines = verse.split('\n').map(line => line.trim()).filter(Boolean);
 						const isRefrain = lines.some(line => line.includes('R:/'));
 
 						return (
-							<View key={index} style={[styles.verseCard, isRefrain && styles.refrainCard]}>
-								{lines.map((line, lineIndex) => renderLine(line, `${index}-${lineIndex}`))}
+							<View
+								key={index}
+								style={[styles.verseCard, isRefrain && styles.refrainCard]}
+								onLayout={(event) => {
+									cardYRef.current[index] = event.nativeEvent.layout.y;
+								}}
+							>
+								{lines.map((line, lineIndex) => {
+									const lineKey = buildLineKey(index, lineIndex);
+									return (
+										<LyricLine
+											key={lineKey}
+											line={line}
+											lineKey={lineKey}
+											progress={
+												hymnTiming && activeEvent
+													? getLineProgress(hymnTiming, lineKey, activeEventIndex)
+													: LINE_UPCOMING
+											}
+											fontStyles={lyricFontStyles}
+											onLineLayout={onLineLayout}
+										/>
+									);
+								})}
 							</View>
 						);
 						})}
@@ -1166,55 +1217,6 @@ const styles = StyleSheet.create({
 	refrainCard: {
 		backgroundColor: '#fdf8fb',
 		borderColor: '#f5e0e9',
-	},
-	verseLine: {
-		marginBottom: 0,
-		lineHeight: 27,
-	},
-	verseLineWrap: {
-		marginBottom: 5,
-		borderRadius: 8,
-		paddingHorizontal: 6,
-		paddingVertical: 1,
-	},
-	activeVerseLineWrap: {
-		backgroundColor: '#fdf0f6',
-		borderWidth: 1,
-		borderColor: '#efc2d2',
-	},
-	verseText: {
-		fontSize: 17,
-		color: '#333333',
-		fontFamily: 'serif',
-		lineHeight: 27,
-	},
-	activeVerseText: {
-		color: '#5f2539',
-		fontWeight: '700',
-	},
-	activeWordText: {
-		color: '#4b1b2b',
-		fontWeight: '800',
-		backgroundColor: '#f6cada',
-	},
-	verseNumber: {
-		fontSize: 17,
-		fontWeight: '700',
-		color: '#6d3549',
-	},
-	activeVerseNumber: {
-		color: '#5f2539',
-	},
-	singingInstructions: {
-		fontSize: 15,
-		fontWeight: '700',
-		fontStyle: 'italic',
-		color: '#6d3549',
-		backgroundColor: '#fce6ee',
-	},
-	activeSingingInstructions: {
-		color: '#5f2539',
-		backgroundColor: '#f6cada',
 	},
 	songNavRow: {
 		flexDirection: 'row',

@@ -3,7 +3,9 @@ import type { AVPlaybackStatus, AVPlaybackStatusSuccess } from 'expo-av';
 
 type PlaybackStatusListener = (status: AVPlaybackStatusSuccess) => void;
 
-const PLAYBACK_POLL_INTERVAL_MS = 250;
+export const PLAYBACK_POLL_INTERVAL_MS = 250;
+// Faster status updates while the follow-along lyrics are on.
+export const FOLLOW_ALONG_POLL_INTERVAL_MS = 100;
 
 class AudioService {
 	private sound: Audio.Sound | null = null;
@@ -45,7 +47,8 @@ class AudioService {
 		source: string | { uri: string } | number,
 		shouldPlay = false,
 		owner: string | null = null,
-		listener: PlaybackStatusListener | null = null
+		listener: PlaybackStatusListener | null = null,
+		pollIntervalMs = PLAYBACK_POLL_INTERVAL_MS
 	): Promise<AVPlaybackStatus> {
 		return this.enqueue(async () => {
 			await this.unloadNowAsync();
@@ -65,7 +68,7 @@ class AudioService {
 					{
 						shouldPlay,
 						positionMillis: 0,
-						progressUpdateIntervalMillis: PLAYBACK_POLL_INTERVAL_MS,
+						progressUpdateIntervalMillis: pollIntervalMs,
 					}
 				);
 			} catch (error) {
@@ -73,6 +76,16 @@ class AudioService {
 				throw error;
 			}
 		});
+	}
+
+	async setFollowAlongPollingAsync(enabled: boolean) {
+		if (!this.sound) {
+			return;
+		}
+
+		await this.sound.setProgressUpdateIntervalAsync(
+			enabled ? FOLLOW_ALONG_POLL_INTERVAL_MS : PLAYBACK_POLL_INTERVAL_MS
+		);
 	}
 
 	async playAsync() {

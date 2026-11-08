@@ -9,6 +9,15 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
+import { LYRIC_SYNC_STEP_MS } from './settings';
+
+interface FollowAlongControl {
+	enabled: boolean;
+	// Positive = words change colour later.
+	syncOffsetMs: number;
+	onToggle: () => void;
+	onNudge: (deltaMs: number) => void;
+}
 
 interface MelodyPlayerControlProps {
 	isReady: boolean;
@@ -23,6 +32,8 @@ interface MelodyPlayerControlProps {
 	onStop: () => void;
 	onSeek: (positionMs: number) => void;
 	onRetryLoad: () => void;
+	// Only passed for hymns that have word timing.
+	followAlong?: FollowAlongControl;
 }
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
@@ -32,6 +43,13 @@ const formatDuration = (valueMs: number) => {
 	const minutes = Math.floor(totalSeconds / 60);
 	const seconds = totalSeconds % 60;
 	return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+const formatSyncOffset = (offsetMs: number) => {
+	if (offsetMs === 0) {
+		return '0 s';
+	}
+	return `${offsetMs > 0 ? '+' : '−'}${(Math.abs(offsetMs) / 1000).toFixed(2)} s`;
 };
 
 const MelodyPlayerControl = ({
@@ -47,6 +65,7 @@ const MelodyPlayerControl = ({
 	onStop,
 	onSeek,
 	onRetryLoad,
+	followAlong,
 }: MelodyPlayerControlProps) => {
 	const { t } = useTranslation();
 	const [seekTrackWidth, setSeekTrackWidth] = useState(0);
@@ -190,6 +209,50 @@ const MelodyPlayerControl = ({
 					<Text style={[styles.stopText, !isReady && styles.stopTextDisabled]}>{t('melody.stop')}</Text>
 				</TouchableOpacity>
 			</View>
+
+			{followAlong ? (
+				<View style={styles.followRow}>
+					<TouchableOpacity
+						style={[styles.followToggle, followAlong.enabled && styles.followToggleOn]}
+						onPress={followAlong.onToggle}
+						accessibilityRole="switch"
+						accessibilityLabel={t('melody.followAlong')}
+						accessibilityState={{ checked: followAlong.enabled }}
+					>
+						<Icon
+							name={followAlong.enabled ? 'checkbox' : 'square-outline'}
+							size={16}
+							color={followAlong.enabled ? '#ffffff' : '#6d3549'}
+						/>
+						<Text style={[styles.followToggleText, followAlong.enabled && styles.followToggleTextOn]}>
+							{t('melody.followAlong')}
+						</Text>
+					</TouchableOpacity>
+					{followAlong.enabled ? (
+						<View style={styles.nudgeWrap}>
+							<TouchableOpacity
+								style={styles.nudgeButton}
+								onPress={() => followAlong.onNudge(-LYRIC_SYNC_STEP_MS)}
+								accessibilityRole="button"
+								accessibilityLabel={t('melody.syncEarlier')}
+							>
+								<Text style={styles.nudgeButtonText}>−</Text>
+							</TouchableOpacity>
+							<Text style={styles.nudgeValue} accessibilityLabel={t('melody.syncTitle')}>
+								{formatSyncOffset(followAlong.syncOffsetMs)}
+							</Text>
+							<TouchableOpacity
+								style={styles.nudgeButton}
+								onPress={() => followAlong.onNudge(LYRIC_SYNC_STEP_MS)}
+								accessibilityRole="button"
+								accessibilityLabel={t('melody.syncLater')}
+							>
+								<Text style={styles.nudgeButtonText}>+</Text>
+							</TouchableOpacity>
+						</View>
+					) : null}
+				</View>
+			) : null}
 		</View>
 	);
 };
@@ -334,6 +397,65 @@ const styles = StyleSheet.create({
 	},
 	stopTextDisabled: {
 		color: '#b3b3b3',
+	},
+	followRow: {
+		marginTop: 10,
+		paddingTop: 8,
+		borderTopWidth: 1,
+		borderTopColor: '#f0e4ea',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		flexWrap: 'wrap',
+	},
+	followToggle: {
+		minHeight: 44,
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 12,
+		borderRadius: 999,
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		backgroundColor: '#fdf2f6',
+	},
+	followToggleOn: {
+		backgroundColor: '#6d3549',
+		borderColor: '#6d3549',
+	},
+	followToggleText: {
+		marginLeft: 6,
+		fontSize: 12,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
+	followToggleTextOn: {
+		color: '#ffffff',
+	},
+	nudgeWrap: {
+		flexDirection: 'row',
+		alignItems: 'center',
+	},
+	nudgeButton: {
+		width: 44,
+		height: 44,
+		borderRadius: 22,
+		backgroundColor: '#fdf2f6',
+		borderWidth: 1,
+		borderColor: '#f5d6e1',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	nudgeButtonText: {
+		fontSize: 18,
+		fontWeight: '700',
+		color: '#6d3549',
+	},
+	nudgeValue: {
+		minWidth: 64,
+		textAlign: 'center',
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#6d3549',
 	},
 });
 
