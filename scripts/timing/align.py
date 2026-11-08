@@ -8,8 +8,9 @@ Steps: MIDI -> French syllable-notes per verse/line; MIDI->audio time map fitted
 audio onsets (onsets.json); Kinyarwanda lines (repeats expanded) aligned to the French lines,
 then syllables to syllable-notes; times converted to audio time.
 
-python3 align.py                         -> writes lyricTiming.json (+ quality.json)
-python3 align.py --show 7 [--verse 0]    -> syllable/note table (no files written)
+python3 align.py [--lang rw,fr,en,ee]                 -> writes lyricTiming.json (rw), lyricTiming_fr/_en/_ee.json
+                                                         (+ quality.json / quality_<lang>.json)
+python3 align.py --show 7 [--verse 0] [--lang fr]      -> syllable/note table (no files written)
 """
 import json, re, sys, math, unicodedata, itertools, os, glob
 import numpy as np
@@ -25,7 +26,24 @@ QUALITY_THRESHOLD = 0.6
 GENERATED_AT = '2026-11-08'
 
 # ---------------------------------------------------------------- text
-MARK_RE = re.compile(r'\((bis|ter|x\s*\d|\d|etc\.?)\)', re.I)
+MARK_RE = re.compile(r'\((bis|ter|x\s*\d|\d\s*x|\d|etc\.?)\)', re.I)
+ETC_RE = re.compile(r'^(etc\.?|&c\.?)[)!.,;:]*$', re.I)          # "..., etc." = rest of refrain
+LABEL_RE = re.compile(r'^(refrain|chorus|chœur|choeur|réf\.?|ref\.?)\s*:?$', re.I)
+
+EDITIONS = {   # lang: (songs file, output file)
+    'rw': ('songs.json', 'lyricTiming.json'),
+    'fr': ('songs_fr.json', 'lyricTiming_fr.json'),
+    'en': ('songs_en.json', 'lyricTiming_en.json'),
+    'ee': ('songs_ee.json', 'lyricTiming_ee.json'),
+}
+
+
+class _Ctx:
+    lang = 'rw'
+    fr_dict = {}
+
+
+CTX = _Ctx()
 VERSE_NUM_RE = re.compile(r'^(\d+)\.\s*(.*)$')
 
 
@@ -37,6 +55,8 @@ def mark_count(m):
         return 3
     if v.startswith('x') and v[1:].isdigit():
         return int(v[1:])
+    if v.endswith('x') and v[:-1].isdigit():
+        return int(v[:-1])
     if v.isdigit():
         return int(v)
     return 1  # (etc)
@@ -63,6 +83,12 @@ def _is_vowel(ch):
 
 
 def syl_ranges(token):
+    if CTX.lang != 'rw':
+        return syl_ranges_lang(token, CTX.lang)
+    return syl_ranges_rw(token)
+
+
+def syl_ranges_rw(token):
     """Half-open character ranges of the sung syllables inside a token string.
     Every vowel letter is a nucleus (CV, CCV, NCV...; y/w are glides = consonants); the
     consonants (and an apostrophe of an elided vowel) before a vowel open its syllable, so
@@ -86,9 +112,181 @@ def syllables(word):
     return len(syl_ranges(word))
 
 
+# ---------------------------------------------------------------- other editions
+LANG_VOWELS = {'fr': set('aeiouyœæ'), 'en': set('aeiouy'), 'ee': set('aeiouɛɔ')}
+
+
+def _norm_char(ch):
+    """normalised letters of one character: lowercase base letter, accents dropped, œ -> oe"""
+    if ch in 'œŒ':
+        return 'oe'
+    if ch in 'æÆ':
+        return 'ae'
+    d = unicodedata.normalize('NFD', ch)
+    b = d[0].lower()
+    return b if b.isalpha() else ''
+
+
+def letters_lang(w):
+    return ''.join(_norm_char(c) for c in w)
+
+
+def is_vowel_lang(ch, lang):
+    n = _norm_char(ch)
+    return bool(n) and n[0] in LANG_VOWELS[lang]
+
+
+def _ranges_from_nuclei(token, nuc_ends):
+    """nuc_ends: char index just after each nucleus (sorted). Consonants after a nucleus open
+    the next syllable; leading/trailing non-letters attach to the first/last syllable."""
+    if not nuc_ends:
+        return []
+    starts = [0] + list(nuc_ends[:-1])
+    ends = list(nuc_ends[:-1]) + [len(token)]
+    return list(zip(starts, ends))
+
+
+def _after_marks(token, k):
+    while k < len(token) and unicodedata.combining(token[k]):
+        k += 1
+    return k
+
+
+def syl_ranges_lang(token, lang):
+    masked = list(token)
+    for m in MARK_RE.finditer(token):
+        for k in range(m.start(), m.end()):
+            masked[k] = '#'
+    core = ''.join(c for c in masked if c != '#')
+    if ETC_RE.match(core.strip()) or not any(c.isalpha() for c in core):
+        return []
+    alpha = [k for k, ch in enumerate(masked) if ch != '#' and ch.isalpha()]
+    if lang == 'ee':
+        ends = []
+        for n_, k in enumerate(alpha):
+            ch = masked[k]
+            if is_vowel_lang(ch, 'ee'):
+                ends.append(_after_marks(token, k + 1))
+            elif n_ == 0 and _norm_char(ch) in ('m', 'n') and len(alpha) > 1 \
+                    and not is_vowel_lang(masked[alpha[1]], 'ee') and _norm_char(masked[alpha[1]]) not in 'yw':
+                ends.append(_after_marks(token, k + 1))      # syllabic nasal (m-, n- + consonant)
+        return _ranges_from_nuclei(token, ends)
+    if lang == 'fr':
+        key = ''.join(_norm_char(masked[k]) for k in alpha)
+        var = CTX.fr_dict.get(key)
+        if var:
+            # syllable boundaries exactly as the MIDI karaoke splits this word (e-muet included)
+            pos = []  # char index of each normalised letter
+            for k in alpha:
+                for _ in _norm_char(masked[k]):
+                    pos.append(k)
+            cuts = []
+            for b in var:
+                if 0 < b < len(pos):
+                    c = pos[b]
+                    if pos[b - 1] == c:      # boundary inside "œ": move after it
+                        c = c + 1
+                    if not cuts or c > cuts[-1]:
+                        cuts.append(c)
+            starts = [0] + cuts
+            ends = cuts + [len(token)]
+            return list(zip(starts, ends))
+        # rule fallback: vowel groups; u after q/g is a consonant; diaeresis splits a group
+        ends, prev_v, prev_k = [], False, None
+        for n_, k in enumerate(alpha):
+            ch = masked[k]
+            v = is_vowel_lang(ch, 'fr')
+            nb = _norm_char(ch)
+            if v and nb == 'u' and n_ > 0 and _norm_char(masked[alpha[n_ - 1]]) in ('q', 'g') \
+                    and n_ + 1 < len(alpha) and is_vowel_lang(masked[alpha[n_ + 1]], 'fr'):
+                v = False
+            trema = '\u0308' in unicodedata.normalize('NFD', ch)
+            if v and prev_v and not trema and prev_k == k - 1:
+                ends[-1] = k + 1
+            elif v:
+                ends.append(k + 1)
+            prev_v, prev_k = v, k
+        return _ranges_from_nuclei(token, ends)
+    if lang == 'en':
+        L = [_norm_char(masked[k]) for k in alpha]
+        groups = []  # [first alpha idx, last alpha idx]; "o'er": the apostrophe is not a letter
+        for n_, ch in enumerate(L):
+            v = ch in 'aeiou' or (ch == 'y' and n_ > 0)
+            if v and groups and groups[-1][1] == n_ - 1:
+                groups[-1][1] = n_
+            elif v:
+                groups.append([n_, n_])
+        w = ''.join(L)
+        if len(groups) > 1:
+            last = groups[-1]
+            single_final_e = last[0] == last[1] and L[last[0]] == 'e'
+            if single_final_e and last[0] == len(L) - 1 and not (w.endswith('le') and len(w) > 2 and w[-3] not in 'aeiouy'):
+                groups.pop()
+            elif single_final_e and last[0] == len(L) - 2 and w.endswith('es') and len(w) > 2 and w[-3] not in 'sxzcgh':
+                groups.pop()
+            elif single_final_e and last[0] == len(L) - 2 and w.endswith('ed') and len(w) > 2 and w[-3] not in 'td':
+                groups.pop()
+        return _ranges_from_nuclei(token, [alpha[g[1]] + 1 for g in groups])
+    raise ValueError(lang)
+
+
+def build_fr_dict(md):
+    """normalised French word -> syllable boundaries (letter indices), from the MIDI lyrics."""
+    from collections import Counter
+    words = {}
+    cur, lens = '', []
+
+    def close():
+        nonlocal cur, lens
+        if cur:
+            b, acc = [], 0
+            for x in lens[:-1]:
+                acc += x
+                b.append(acc)
+            words.setdefault(cur, Counter())[tuple(b)] += 1
+        cur, lens = '', []
+
+    for t, txt in md['lyr']:
+        if txt.startswith(('\\', '/')):
+            close()
+        body = re.sub(r'^\s*\d+\.\s*', '', txt.lstrip('\\/'))
+        parts = re.split(r'(\s+)', body)
+        first = True
+        for p in parts:
+            if not p:
+                continue
+            if p.isspace():
+                close()
+                continue
+            lt = letters_lang(p)
+            if not lt:
+                continue
+            if not first and lens:
+                pass
+            cur += lt
+            lens.append(len(lt))
+            first = False
+        # a syllable that ends with a letter continues the word (e.g. "sus-" -> Jésus-Christ)
+    close()
+    return {k: list(v.most_common(1)[0][0]) for k, v in words.items()}
+
+
+def nonsung_token(tok):
+    stripped = MARK_RE.sub('', tok)
+    if not re.search(r'\w', stripped):
+        return True
+    return CTX.lang != 'rw' and bool(ETC_RE.match(stripped.strip()))
+
+
+def is_label_line(words):
+    return CTX.lang != 'rw' and bool(LABEL_RE.match(' '.join(words).strip()))
+
+
 class Line:
     def __init__(self, vi, li, words):
         self.vi, self.li, self.words = vi, li, words
+        self.label = is_label_line(words)
+        self.etc = CTX.lang != 'rw' and any(ETC_RE.match(MARK_RE.sub('', w).strip()) for w in words)
         # per word: syllable count, marker count (if a marker sits in/after the word)
         self.syl = [syllables(w) for w in words]
         self.end_mark = 1
@@ -113,6 +311,8 @@ class Line:
 
     def word_units(self):
         """sung word sequence for this line incl. mid-line repeats -> list of wi"""
+        if self.label:
+            return []
         seq = list(range(len(self.words)))
         for pos, c in sorted(self.mid_marks, reverse=True):
             head = list(range(0, pos + 1))
@@ -152,12 +352,17 @@ def to_syllables(seq):
         for wi in wis:
             n = L.syl[wi]
             stripped = MARK_RE.sub('', L.words[wi])
-            if not re.search(r'\w', stripped):
-                continue  # pure marker / punctuation token: not sung, no event
+            if nonsung_token(L.words[wi]):
+                continue  # pure marker / punctuation / "etc." token: not sung, no event
             words.append([L.vi, L.li, wi, len(syl) if n else None])
-            letters = _letters(stripped)
+            if CTX.lang == 'rw':
+                letters = _letters(stripped)
+                vowels = tuple('aeiou')
+            else:
+                letters = letters_lang(stripped)
+                vowels = tuple(LANG_VOWELS[CTX.lang])
             elide = 0
-            if n and prev_end and prev_end[0] and letters[:1] in tuple('aeiou'):
+            if n and prev_end and prev_end[0] and letters[:1] in vowels:
                 elide = 2 if prev_end[1] else 1
             rng = syl_ranges(L.words[wi])
             for s in range(n):
@@ -165,7 +370,7 @@ def to_syllables(seq):
                             'elide': elide if s == 0 else 0, 'line': li_s,
                             'w': (L.vi, L.li, wi), 'cs': rng[s][0], 'ce': rng[s][1]})
             if n:
-                prev_end = (letters[-1:] in tuple('aeiou'), bool(re.search(r'[,;:.!?]$', stripped)))
+                prev_end = (letters[-1:] in vowels, bool(re.search(r'[,;:.!?]$', stripped)))
         if len(syl) > line_start:
             syl[line_start]['lfirst'] = True
             syl[-1]['llast'] = True
@@ -178,6 +383,9 @@ def validate(hymns, songs):
     problems, missing = [], []
     for key, h in hymns.items():
         toks = [tokenize_verse(v) for v in songs[key]['verses']]
+        if CTX.lang == 'fr':   # syllable boundaries of French words depend on the hymn's MIDI
+            p = midi_path(key)
+            CTX.fr_dict = build_fr_dict(_MIDI_CACHE.get(p) or read_midi(p))
         ev = h['events']
         if any(ev[i][5] > ev[i + 1][5] for i in range(len(ev) - 1)):
             problems.append((key, 'not sorted'))
@@ -203,7 +411,7 @@ def validate(hymns, songs):
         for v in range(len(toks)):
             for l in range(len(toks[v])):
                 for w, tok in enumerate(toks[v][l]):
-                    sung = re.search(r'\w', MARK_RE.sub('', tok))
+                    sung = not nonsung_token(tok) and not is_label_line(toks[v][l])
                     if sung and (v, l, w) not in occ:
                         missing.append((key, v, l, w))
                     if not sung and (v, l, w) in occ:
@@ -477,8 +685,10 @@ def verse_candidates(lines, vi, chorus, lc):
     combos = itertools.product(*choice_sets) if choice_sets is not None else \
         [tuple(m for _ in marked) for m in ('line', 'couplet', 'none')]
     extras = [()]
-    if chorus and vi > 0 and lc[vi] < lc[0]:
+    has_etc = any(L.etc for L in vl)
+    if chorus and vi > 0 and lc[vi] < lc[0] and not has_etc:
         extras.append(tuple(chorus))
+    refrain = find_refrain(lines[0], next((L for L in vl if L.etc), None)) if (has_etc and vi > 0) else []
     for combo in combos:
         mode = dict(zip(marked, combo))
         for extra in extras:
@@ -492,13 +702,41 @@ def verse_candidates(lines, vi, chorus, lc):
                         block = [(L, L.word_units())]
                     for _ in range(L.end_mark - 1):
                         seq.extend(block)
+                if L.etc and refrain:
+                    # "Ô notre Dieu ! sois béni, etc." = this line, then the rest of the refrain
+                    # as printed under verse 1 (events point at verse 1's lines)
+                    for R in refrain[1:]:
+                        seq.extend(split_units(R))
+                        if R.end_mark > 1 and mode.get(-1, 'line') != 'none':
+                            for _ in range(R.end_mark - 1):
+                                seq.append((R, R.word_units()))
             for L in extra:
                 seq.append((L, L.word_units()))
                 if L.end_mark > 1:
                     for _ in range(L.end_mark - 1):
                         seq.append((L, L.word_units()))
+            seq = [(L, w) for L, w in seq if any(not nonsung_token(L.words[x]) for x in w)]
             opts.append((dict(mode), bool(extra), seq))
     return opts
+
+
+def _norm_line(L):
+    return [letters_lang(MARK_RE.sub('', w)) for w in L.words if not nonsung_token(w)]
+
+
+def find_refrain(v0, etc_line):
+    """Refrain lines of verse 1 that an abbreviated "..., etc." line stands for."""
+    if etc_line is None:
+        return []
+    lab = [k for k, L in enumerate(v0) if L.label]
+    if lab:
+        return [L for L in v0[lab[0] + 1:] if not L.label]
+    q = [w for w in _norm_line(etc_line) if w]
+    for k, L in enumerate(v0):
+        n = [w for w in _norm_line(L) if w]
+        if q and n and (n[:len(q)] == q or q[:len(n)] == n or n[:2] == q[:2]):
+            return v0[k:]
+    return []
 
 
 def sung_line_syls(seq):
@@ -509,13 +747,18 @@ def sung_line_syls(seq):
         for s in syl:
             v, l, w = s['w']
             tok = L.words[w]
-            txt = _letters(tok[s['cs']:s['ce']])
-            s['bare_vowel'] = len(txt) == 1 and txt in 'aeiou'
+            if CTX.lang == 'rw':
+                txt = _letters(tok[s['cs']:s['ce']])
+                s['bare_vowel'] = len(txt) == 1 and txt in 'aeiou'
+            else:
+                txt = letters_lang(tok[s['cs']:s['ce']])
+                s['bare_vowel'] = len(txt) == 1 and txt in LANG_VOWELS[CTX.lang]
         out.append((syl, words))
     return out
 
 
 def process(song, ons, md):
+    CTX.fr_dict = build_fr_dict(md) if CTX.lang == 'fr' else {}
     verses = song['verses']
     toks = [tokenize_verse(v) for v in verses]
     lines = [[Line(vi, li, w) for li, w in enumerate(vt)] for vi, vt in enumerate(toks)]
@@ -682,8 +925,9 @@ def process(song, ons, md):
     return events, info
 
 
-def load():
-    songs = {str(x['song_number']): x for x in json.load(open(SONGS, encoding='utf-8'))}
+def load(lang='rw'):
+    path = os.path.join(os.path.dirname(SONGS), EDITIONS[lang][0])
+    songs = {str(x['song_number']): x for x in json.load(open(path, encoding='utf-8'))}
     ons = json.load(open(ONSETS))
     return songs, ons
 
@@ -692,11 +936,16 @@ def key_of(k):
     return str(int(k)) if k.isdigit() else k
 
 
+_MIDI_CACHE = {}
+
+
 def run_one(key, songs, ons):
     p = midi_path(key)
     if p is None:
         return None, dict(quality=0.0, reason='no MIDI')
-    md = read_midi(p)
+    if p not in _MIDI_CACHE:
+        _MIDI_CACHE[p] = read_midi(p)
+    md = _MIDI_CACHE[p]
     okey = f'{int(key):03d}' if key.isdigit() else key
     return process(songs[key], ons.get(okey), md)
 
@@ -719,19 +968,14 @@ def show(num, songs, ons):
         print(f'    {tok:<18} {tok[cs:ce]:<8} {a:>7}-{b:<7} ms   (FR "{ftxt}", MIDI {t0:.2f}s)')
 
 
-def main():
-    songs, ons = load()
-    if '--show' in sys.argv:
-        args = sys.argv[sys.argv.index('--show') + 1:]
-        skip = {i + 1 for i, x in enumerate(args) if x == '--verse'}
-        for a in [x for i, x in enumerate(args) if not x.startswith('--') and i not in skip]:
-            show(a, songs, ons)
-        return
+def run_edition(lang):
+    CTX.lang = lang
+    songs, ons = load(lang)
     hymns, qual = {}, {}
     keys = sorted(set(key_of(k) for k in ons) | set(songs), key=lambda x: (int(re.match(r'\d+', x).group()), x))
     for key in keys:
         if key not in songs:
-            qual[key] = dict(quality=0.0, reason='no lyrics in songs.json')
+            qual[key] = dict(quality=0.0, reason=f'no lyrics in {EDITIONS[lang][0]}')
             continue
         try:
             ev, info = run_one(key, songs, ons)
@@ -741,21 +985,39 @@ def main():
         if ev and info['quality'] >= QUALITY_THRESHOLD:
             hymns[key] = {'quality': round(info['quality'], 2), 'events': [e[:7] for e in ev]}
     problems, missing = validate(hymns, songs)
-    if problems:
-        print(f'VALIDATION: {len(problems)} problems, e.g. {problems[:5]}')
-    else:
-        print('validation ok: ranges inside tokens, per-occurrence coverage complete, sorted')
-    print(f'{len(missing)} sung tokens without events in included hymns (unmatched lines/verses)')
-    tms = [q['time_map'] for q in qual.values() if 'time_map' in q]
-    a_ = np.array([t['a'] for t in tms]); b_ = np.array([t['b'] for t in tms])
-    print(f'time map: scale median {np.median(a_):.5f} [{a_.min():.5f}..{a_.max():.5f}], '
-          f'offset median {np.median(b_):.3f}s [{b_.min():.3f}..{b_.max():.3f}]')
+    print(f'[{lang}] ' + (f'VALIDATION: {len(problems)} problems, e.g. {problems[:5]}' if problems else
+                          'validation ok: ranges inside tokens, per-occurrence coverage complete, sorted'))
+    print(f'[{lang}] {len(missing)} sung tokens without events in included hymns (unmatched lines/verses)')
+    if lang == 'rw':
+        tms = [q['time_map'] for q in qual.values() if 'time_map' in q]
+        a_ = np.array([t['a'] for t in tms]); b_ = np.array([t['b'] for t in tms])
+        print(f'time map: scale median {np.median(a_):.5f} [{a_.min():.5f}..{a_.max():.5f}], '
+              f'offset median {np.median(b_):.3f}s [{b_.min():.3f}..{b_.max():.3f}]')
     out = {'version': 2, 'generatedAt': GENERATED_AT, 'hymns': hymns}
-    with open(OUT, 'w', encoding='utf-8') as f:
+    with open(os.path.join(HERE, EDITIONS[lang][1]), 'w', encoding='utf-8') as f:
         json.dump(out, f, separators=(',', ':'), ensure_ascii=False)
-    with open(QOUT, 'w', encoding='utf-8') as f:
+    qpath = QOUT if lang == 'rw' else os.path.join(HERE, f'quality_{lang}.json')
+    with open(qpath, 'w', encoding='utf-8') as f:
         json.dump(qual, f, ensure_ascii=False, indent=0)
-    print(f'{len(hymns)} / {len(qual)} hymns written (threshold {QUALITY_THRESHOLD})')
+    print(f'[{lang}] {len(hymns)} / {len(qual)} hymns written to {EDITIONS[lang][1]} (threshold {QUALITY_THRESHOLD})')
+
+
+def main():
+    langs = list(EDITIONS)
+    if '--lang' in sys.argv:
+        langs = sys.argv[sys.argv.index('--lang') + 1].split(',')
+    if '--show' in sys.argv:
+        args = sys.argv[sys.argv.index('--show') + 1:]
+        skip = {i + 1 for i, x in enumerate(args) if x in ('--verse', '--lang')}
+        for lang in langs:
+            CTX.lang = lang
+            songs, ons = load(lang)
+            for a in [x for i, x in enumerate(args) if not x.startswith('--') and i not in skip]:
+                print(f'== {lang} hymn {a}')
+                show(a, songs, ons)
+        return
+    for lang in langs:
+        run_edition(lang)
 
 
 if __name__ == '__main__':

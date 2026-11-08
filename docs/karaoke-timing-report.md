@@ -31,7 +31,7 @@ The earlier version, built from audio onsets alone, was replaced. It had no note
    - Note times in seconds follow the tempo map.
    - The soprano is the track named So*an* (some files spell it "Sorpano"); otherwise the first track with notes.
    - The lyric track holds one French syllable per soprano note onset.
-   - A lyric starting with `\\` opens a paragraph and `/` opens a line. A paragraph starting with "N." opens a new verse.
+   - A lyric starting with `\` opens a paragraph and `/` opens a line. A paragraph starting with "N." opens a new verse.
    - A French syllable's notes are its own note plus the following lyric-less soprano notes that continue without a rest (ties and melisma).
    - Every repeat is written out in the MIDI, so it gives the exact number of times each line and refrain is played.
 2. **MIDI to audio time.** All-voice MIDI onsets are matched against the audio onsets in `onsets.json`: first by a histogram of time differences, then by a linear least-squares fit audio = a x midi + b.
@@ -355,3 +355,44 @@ kin/midi = number of Kinyarwanda verse entries / number of MIDI verses. offset a
 - **Clipped first syllables:** in 89, 176, 188, 200, 217, 233 and 240, 1-2 syllables fall before the audio file starts and are clipped to 0 ms.
 - **Excluded:** 173 (MIDI and audio disagree: 58% matched, rms 13 ms; probably a different arrangement) and 200bis (no lyrics).
 - **Split notes:** when two Kinyarwanda syllables share one French note without an elision, the note is split evenly. That is an approximation of how singers fit the extra syllable.
+
+
+## Other editions (fr, en, ee)
+
+`python3 align.py` also writes `lyricTiming_fr.json`, `lyricTiming_en.json` and `lyricTiming_ee.json`. They use the same v2 format, and the indices refer to each edition's own songs file (`songs_fr.json`, `songs_en.json`, `songs_ee.json`). Per-hymn diagnostics are in `quality_<lang>.json`. Use `--lang fr` (or a comma list) to run one edition, and `--show 7 --verse 0 --lang ee` to print a table. The Kinyarwanda output did not change: the new run produced a byte-identical file.
+
+The pipeline is the same for every edition: MIDI notes, the per-hymn time map (unchanged), verse, line and syllable matching, and the same quality score and 0.6 threshold. What differs per edition:
+
+- **French (1991 text):**
+  - Syllable boundaries for each word come from the MIDI karaoke syllables of the same hymn: a normalised-letter dictionary built from the MIDI words, so the MIDI decides each e-muet.
+  - Words that differ from the MIDI text (1991 revisions) fall back to a rule-based splitter (vowel groups; u after q/g is not a vowel; a diaeresis splits a group) plus the dynamic-programming alignment.
+  - `Refrain :` label lines are not sung and get no events.
+  - A line ending in `etc.` (e.g. "Ô notre Dieu ! sois béni, etc.") is sung, and is followed by the rest of the refrain printed under verse 1. Those events point at verse 1's lines. The `etc.` token gets no event.
+- **English (Little Flock 1881):**
+  - The syllabifier counts vowel groups, drops a silent final e (but not consonant+le), and drops -es and -ed unless they follow s/x/z/c/g/h or t/d.
+  - An apostrophe inside a word does not split it (o'er = 1 syllable).
+  - `(2x)`/`(3x)`/`(4x)` are repeat markers, and `etc.` works as in French.
+  - This text is a close translation, not a singable one, so syllable counts often don't fit the tune. Many lines need 2:1 or 1:2 mappings, which explains the low pass rate.
+- **Ewe:**
+  - Each vowel (a e i o u ɛ ɔ, with tone and nasal marks kept attached) is one syllable.
+  - A word-initial m or n before a consonant is a syllabic nasal.
+  - An apostrophe joins as in Kinyarwanda ('gbefiakuku).
+  - Some verses split lines differently from the French, so 2:1 and 3:1 line groups are common.
+  - The text of some verses is incomplete. In hymn 7, verses 1 and 2 have about 16 syllables against 30 notes for the first four lines, so part of the music has no text.
+
+| edition | included (>= 0.6) | quality 1.0 | median | hymns 1-8 |
+|---|---|---|---|---|
+| rw | 270 / 272 | 216 | 1.00 | .94 .94 .90 1 1 1 1 1 |
+| fr | 269 / 272 | 239 | 1.00 | .96 1 1 1 .90 .94 1 1 |
+| en | 133 / 272 | 5 | 0.59 | .79 .71 .77 .59 .64 .57 .73 .83 (4 and 6 excluded) |
+| ee | 264 / 272 | 121 | 0.96 | 1 1 1 1 1 1 .83 .95 |
+
+Excluded:
+- fr: 173 (time map), 200bis, 225.
+- ee: 22, 101, 160, 173, 214, 251, 266, 200bis.
+- en: 139 hymns (see `quality_en.json`).
+
+Spot-check:
+- **English:** included hymns can still put a word on the wrong note inside a line, because the text doesn't follow the tune. Treat English as approximate.
+- **French:** check hymns with "etc." refrains (e.g. 7) to confirm the refrain repeats after every verse.
+- **Ewe:** check hymn 7, verses 1-2 (incomplete text).
