@@ -27,7 +27,6 @@ import { StackActions } from '@react-navigation/native';
 import { getPopCountToSong } from './songNavigation';
 import MelodyPlayerControl from './MelodyPlayerControl';
 import LyricLine from './LyricLine';
-import { getSongMelodyMetadata } from './melodyMetadata';
 import { getTextNote } from './textNotes';
 import {
 	buildLineKey,
@@ -136,10 +135,6 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const [followAlong, setFollowAlong] = useState(true);
 	const [syncOffsetMs, setSyncOffsetMs] = useState(0);
 	const [activeEventIndex, setActiveEventIndex] = useState(-1);
-	const melodyMetadata = useMemo(
-		() => (SHOW_MELODY_PLAYBACK ? getSongMelodyMetadata(song_id) : null),
-		[song_id]
-	);
 	const localAsset = useMemo(() => {
 		const numericSongNumber = Number(song_number);
 		if (Number.isFinite(numericSongNumber)) {
@@ -159,10 +154,6 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const activeLineKey = activeEvent ? buildLineKey(activeEvent[0], activeEvent[1]) : null;
 	karaokeTimingRef.current = karaokeVisible ? hymnTiming : null;
 	syncOffsetRef.current = syncOffsetMs;
-	const fallbackDurationMs = useMemo(
-		() => melodyMetadata?.timed_lines[melodyMetadata.timed_lines.length - 1]?.end_ms || 0,
-		[melodyMetadata]
-	);
 	const crossLanguageSongIds = useMemo(
 		() => getCrossLanguageSongIds(song_id),
 		[song_id]
@@ -432,7 +423,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const currentIndex = songs.findIndex(song => song.song_id === song_id);
 	const previousSong = currentIndex > 0 ? songs[currentIndex - 1] : null;
 	const nextSong = currentIndex >= 0 && currentIndex < songs.length - 1 ? songs[currentIndex + 1] : null;
-	const effectiveDurationMs = playbackDurationMs || fallbackDurationMs;
+	const effectiveDurationMs = playbackDurationMs;
 	const isMelodyReady = hasMelodySource && !isMelodyLoading && !melodyError;
 
 	// Prev/next replace the screen (they walk the current list). Same-melody and translation
@@ -807,7 +798,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 						positionMs={playbackPositionMs}
 						durationMs={effectiveDurationMs}
 						errorMessage={melodyError}
-						sourceLabel={localAsset ? "Piano (Cantiquest)" : melodyMetadata?.source_label}
+						sourceLabel={"Piano (Cantiquest)"}
 						onTogglePlayPause={onTogglePlayPause}
 						onStop={onStopPlayback}
 						onSeek={onSeekPlayback}
