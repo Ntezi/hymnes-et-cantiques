@@ -27,14 +27,13 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { StackActions } from '@react-navigation/native';
 import { getPopCountToSong } from './songNavigation';
 import MelodyPlayerControl from './MelodyPlayerControl';
-import LyricLine from './LyricLine';
+import KaraokeLyricLine from './KaraokeLyricLine';
+import { createKaraokeStore } from './karaokeStore';
 import { getTextNote } from './textNotes';
 import {
 	buildLineKey,
 	findActiveEventIndex,
 	getHymnTiming,
-	getLineProgress,
-	LINE_UPCOMING_PROGRESS,
 } from './lyricTiming';
 import {
 	audioService,
@@ -73,6 +72,8 @@ import { HE_C_AUDIO } from '../audio';
 const SHOW_MELODY_PLAYBACK = true;
 // Auto-scroll stays off this long after the user scrolls by hand.
 const MANUAL_SCROLL_HOLD_MS = 4000;
+// Lyrics are re-checked at most this often while playing (about 25 Hz).
+const KARAOKE_TICK_MS = 40;
 const AUTO_SCROLL_TOP_MARGIN = 60;
 const AUTO_SCROLL_BOTTOM_MARGIN = 120;
 const AUTO_SCROLL_TARGET_OFFSET = 180;
@@ -135,7 +136,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const syncOffsetRef = useRef(0);
 	const [followAlong, setFollowAlong] = useState(true);
 	const [syncOffsetMs, setSyncOffsetMs] = useState(0);
-	const [activeEventIndex, setActiveEventIndex] = useState(-1);
+	const karaokeStore = useMemo(createKaraokeStore, []);
 	const localAsset = useMemo(() => {
 		const numericSongNumber = Number(song_number);
 		if (Number.isFinite(numericSongNumber)) {
@@ -159,8 +160,6 @@ const SongDetailScreen = ({ route, navigation }) => {
 	}, [collection_id, song_number, hasMelodySource]);
 	const karaokeOn = followAlong && hymnTiming !== null;
 	const karaokeVisible = karaokeOn && hasPlaybackStarted;
-	const activeEvent = karaokeVisible ? hymnTiming?.events[activeEventIndex] : undefined;
-	const activeLineKey = activeEvent ? buildLineKey(activeEvent[0], activeEvent[1]) : null;
 	karaokeTimingRef.current = karaokeVisible ? hymnTiming : null;
 	syncOffsetRef.current = syncOffsetMs;
 	const crossLanguageSongIds = useMemo(
@@ -244,7 +243,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 		clockRef.current = { positionMs: 0, at: 0, isPlaying: false };
 		lastUiPositionRef.current = 0;
 		activeEventRef.current = -1;
-		setActiveEventIndex(-1);
+		karaokeStore.set(-1);
 		setPlaybackPositionMs(0);
 		setPlaybackDurationMs(0);
 		setIsPlaying(false);
@@ -319,7 +318,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 		}
 		if (next !== activeEventRef.current) {
 			activeEventRef.current = next;
-			setActiveEventIndex(next);
+			karaokeStore.set(next);
 		}
 	};
 
@@ -331,8 +330,14 @@ const SongDetailScreen = ({ route, navigation }) => {
 		if (!karaokeVisible || !isPlaying) {
 			return undefined;
 		}
+		// The store only notifies when the syllable changes; the loop itself runs at about 25 Hz.
+		let lastTick = 0;
 		let frame = requestAnimationFrame(function tick() {
-			updateActiveEvent();
+			const now = Date.now();
+			if (now - lastTick >= KARAOKE_TICK_MS) {
+				lastTick = now;
+				updateActiveEvent();
+			}
 			frame = requestAnimationFrame(tick);
 		});
 		return () => cancelAnimationFrame(frame);
@@ -363,35 +368,46 @@ const SongDetailScreen = ({ route, navigation }) => {
 		saveLyricSyncOffset(collection_id, song_number, next);
 	};
 
+	// Scrolls when the sung line changes. Runs from the store, so it does not need a render.
 	useEffect(() => {
-		if (!activeLineKey || Date.now() - manualScrollAtRef.current < MANUAL_SCROLL_HOLD_MS) {
-			return;
-		}
+		let lastLineKey: string | null = null;
+		const scrollToActiveLine = () => {
+			const event = hymnTiming?.events[karaokeStore.get()];
+			const activeLineKey = event ? buildLineKey(event[0], event[1]) : null;
+			if (activeLineKey === lastLineKey) {
+				return;
+			}
+			lastLineKey = activeLineKey;
+			if (!activeLineKey || Date.now() - manualScrollAtRef.current < MANUAL_SCROLL_HOLD_MS) {
+				return;
+			}
 
-		const layout = lineLayoutRef.current[activeLineKey];
-		const cardY = cardYRef.current[Number(activeLineKey.split('-')[0])];
-		if (!layout || typeof cardY !== 'number') {
-			return;
-		}
+			const layout = lineLayoutRef.current[activeLineKey];
+			const cardY = cardYRef.current[Number(activeLineKey.split('-')[0])];
+			if (!layout || typeof cardY !== 'number') {
+				return;
+			}
 
-		const top = versesWrapYRef.current + cardY + layout.y;
-		const bottom = top + layout.height;
-		const viewTop = scrollYRef.current;
-		const viewBottom = viewTop + viewportHeightRef.current;
-		if (
-			viewportHeightRef.current > 0 &&
-			top >= viewTop + AUTO_SCROLL_TOP_MARGIN &&
-			bottom <= viewBottom - AUTO_SCROLL_BOTTOM_MARGIN
-		) {
-			return;
-		}
+			const top = versesWrapYRef.current + cardY + layout.y;
+			const bottom = top + layout.height;
+			const viewTop = scrollYRef.current;
+			const viewBottom = viewTop + viewportHeightRef.current;
+			if (
+				viewportHeightRef.current > 0 &&
+				top >= viewTop + AUTO_SCROLL_TOP_MARGIN &&
+				bottom <= viewBottom - AUTO_SCROLL_BOTTOM_MARGIN
+			) {
+				return;
+			}
 
-		programmaticScrollUntilRef.current = Date.now() + 500;
-		scrollViewRef.current?.scrollTo({
-			y: Math.max(0, top - AUTO_SCROLL_TARGET_OFFSET),
-			animated: true,
-		});
-	}, [activeLineKey]);
+			programmaticScrollUntilRef.current = Date.now() + 500;
+			scrollViewRef.current?.scrollTo({
+				y: Math.max(0, top - AUTO_SCROLL_TARGET_OFFSET),
+				animated: true,
+			});
+		};
+		return karaokeStore.subscribe(scrollToActiveLine);
+	}, [hymnTiming, karaokeStore]);
 
 	const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
 		const y = event.nativeEvent.contentOffset.y;
@@ -408,6 +424,41 @@ const SongDetailScreen = ({ route, navigation }) => {
 	const onLineLayout = useCallback((lineKey: string, y: number, height: number) => {
 		lineLayoutRef.current[lineKey] = { y, height };
 	}, []);
+
+	// Memoised so the screen's own re-renders (seek bar, buttons) do not rebuild every line.
+	const lyricsBody = useMemo(
+		() =>
+			verses.map((verse, index) => {
+				const lines = verse.split('\n').map(line => line.trim()).filter(Boolean);
+				const isRefrain = lines.some(line => line.includes('R:/'));
+
+				return (
+					<View
+						key={index}
+						style={[styles.verseCard, isRefrain && styles.refrainCard]}
+						onLayout={(event) => {
+							cardYRef.current[index] = event.nativeEvent.layout.y;
+						}}
+					>
+						{lines.map((line, lineIndex) => {
+							const lineKey = buildLineKey(index, lineIndex);
+							return (
+								<KaraokeLyricLine
+									key={lineKey}
+									line={line}
+									lineKey={lineKey}
+									timing={hymnTiming}
+									store={karaokeStore}
+									fontStyles={lyricFontStyles}
+									onLineLayout={onLineLayout}
+								/>
+							);
+						})}
+					</View>
+				);
+			}),
+		[verses, hymnTiming, karaokeStore, lyricFontStyles, onLineLayout]
+	);
 
 	const isFavorite = useMemo(
 		() => isSongInAnyFavoriteCategory(favoriteCategories, song_id),
@@ -829,39 +880,7 @@ const SongDetailScreen = ({ route, navigation }) => {
 							versesWrapYRef.current = event.nativeEvent.layout.y;
 						}}
 					>
-					{verses.map((verse, index) => {
-						const lines = verse.split('\n').map(line => line.trim()).filter(Boolean);
-						const isRefrain = lines.some(line => line.includes('R:/'));
-
-						return (
-							<View
-								key={index}
-								style={[styles.verseCard, isRefrain && styles.refrainCard]}
-								onLayout={(event) => {
-									cardYRef.current[index] = event.nativeEvent.layout.y;
-								}}
-							>
-								{lines.map((line, lineIndex) => {
-									const lineKey = buildLineKey(index, lineIndex);
-									const lineProgress = hymnTiming && activeEvent
-										? getLineProgress(hymnTiming, lineKey, activeEventIndex)
-										: LINE_UPCOMING_PROGRESS;
-									return (
-										<LyricLine
-											key={lineKey}
-											line={line}
-											lineKey={lineKey}
-											progress={lineProgress.word}
-											charStart={lineProgress.charStart}
-											charEnd={lineProgress.charEnd}
-											fontStyles={lyricFontStyles}
-											onLineLayout={onLineLayout}
-										/>
-									);
-								})}
-							</View>
-						);
-						})}
+					{lyricsBody}
 					</View>
 
 				<View style={styles.sameMelodySection}>
