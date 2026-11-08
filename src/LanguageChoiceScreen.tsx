@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import SafeAreaView from 'react-native-safe-area-view';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 import { resolveDefaultUiLanguage, UiLanguageCode, useAppState } from './appState';
@@ -28,6 +28,7 @@ const LanguageChoiceScreen = () => {
 	const [selected, setSelected] = useState<UiLanguageCode>(resolveDefaultUiLanguage);
 
 	return (
+		<SafeAreaProvider>
 		<SafeAreaView style={styles.container}>
 			<ScrollView contentContainerStyle={styles.content}>
 				<Icon name="globe-outline" size={44} color="#6d3549" style={styles.icon} />
@@ -56,6 +57,7 @@ const LanguageChoiceScreen = () => {
 				</TouchableOpacity>
 			</ScrollView>
 		</SafeAreaView>
+		</SafeAreaProvider>
 	);
 };
 
