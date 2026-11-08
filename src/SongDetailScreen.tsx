@@ -23,6 +23,8 @@ import AddToFavoriteSheet from './AddToFavoriteSheet';
 import SameMelodySheet from './SameMelodySheet';
 import { AVPlaybackStatusSuccess } from 'expo-av';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { StackActions } from '@react-navigation/native';
+import { getPopCountToSong } from './songNavigation';
 import MelodyPlayerControl from './MelodyPlayerControl';
 import LyricLine from './LyricLine';
 import { getSongMelodyMetadata } from './melodyMetadata';
@@ -444,10 +446,17 @@ const SongDetailScreen = ({ route, navigation }) => {
 			return;
 		}
 
-		navigation[mode]('SongDetail', {
-			...song,
-			songs: songSequence,
-		});
+		const params = { ...song, songs: songSequence };
+		if (mode === 'push') {
+			// Hopping between linked hymns must not grow the stack: go back to the copy already in it.
+			const state = navigation.getState();
+			const popCount = getPopCountToSong(state.routes, state.index, song.song_id);
+			if (popCount > 0) {
+				navigation.dispatch(StackActions.pop(popCount));
+				return;
+			}
+		}
+		navigation[mode]('SongDetail', params);
 	};
 
 	const isAnySheetVisible = isFavoriteSheetVisible || isSameMelodySheetVisible || isLanguageSheetVisible;
