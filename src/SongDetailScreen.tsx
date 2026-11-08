@@ -248,16 +248,13 @@ const SongDetailScreen = ({ route, navigation }) => {
 		return unsubscribe;
 	}, [navigation, audioOwnerId]);
 
+	// Keep the screen on while a hymn is open (people read along during worship), not app-wide.
 	useEffect(() => {
-		if (!isPlaying) {
-			return;
-		}
-
 		activateKeepAwake(audioOwnerId).catch(() => undefined);
 		return () => {
 			deactivateKeepAwake(audioOwnerId).catch(() => undefined);
 		};
-	}, [isPlaying, audioOwnerId]);
+	}, [audioOwnerId]);
 
 	useEffect(() => {
 		if (!activeLineKey || lastAutoScrollLineRef.current === activeLineKey) {
