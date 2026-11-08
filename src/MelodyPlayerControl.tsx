@@ -238,7 +238,11 @@ const MelodyPlayerControl = ({
 							>
 								<Text style={styles.nudgeButtonText}>−</Text>
 							</TouchableOpacity>
-							<Text style={styles.nudgeValue} accessibilityLabel={t('melody.syncTitle')}>
+							<Text
+								style={styles.nudgeValue}
+								accessibilityLabel={`${t('melody.syncTitle')}: ${formatSyncOffset(followAlong.syncOffsetMs)}`}
+								accessibilityLiveRegion="polite"
+							>
 								{formatSyncOffset(followAlong.syncOffsetMs)}
 							</Text>
 							<TouchableOpacity
